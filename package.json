@@ -1,0 +1,48 @@
+{
+  "name": "streamsage",
+  "version": "1.0.0",
+  "description": "StreamSage AI Assistant",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "prod": "NODE_ENV=production electron .",
+    "build:mac": "PYTHON_PATH=/opt/anaconda3/envs/quiz/bin/python electron-builder build --mac --x64 --arm64",
+    "build:win": "electron-builder build --win",
+    "build:linux": "electron-builder build --linux",
+    "clean": "rm -rf dist node_modules",
+    "rebuild": "npm run clean && npm cache clean --force && npm install && npm run patch-dmg-builder && DEBUG=electron-builder PYTHON_PATH=/opt/anaconda3/envs/quiz/bin/python npm run build:mac",
+    "patch-dmg-builder": "node patch-dmg-builder.js"
+  },
+  "author": "Your Name",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^13.0.0",
+    "electron-builder": "^22.14.13"
+  },
+  "dependencies": {
+    "dotenv": "^10.0.0"
+  },
+  "build": {
+    "appId": "com.yourdomain.streamsage",
+    "productName": "StreamSage",
+    "mac": {
+      "category": "public.app-category.productivity"
+    },
+    "files": [
+      "src/**/*",
+      "StreamSage/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "StreamSage",
+        "to": "StreamSage",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "afterPack": "./after-pack.js"
+  }
+}

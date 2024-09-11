@@ -1,0 +1,48 @@
+appId: com.yourcompany.streamsage
+productName: StreamSage
+directories:
+  output: dist
+  buildResources: build
+files:
+  - "**/*"
+  - "!**/*.{o,hprof,orig,pyc,pyo,rbc}"
+extraResources:
+  - from: StreamSage
+    to: StreamSage
+    filter:
+      - "**/*"
+  - from: ${env.PYTHON_PATH}
+    to: python
+mac:
+  category: public.app-category.productivity
+  target:
+    - dmg
+    - zip
+  extraFiles:
+    - from: ${env.PYTHON_PATH}
+      to: Resources/python
+  extendInfo:
+    NSAppTransportSecurity:
+      NSAllowsArbitraryLoads: true
+    NSMicrophoneUsageDescription: StreamSage requires microphone access for audio recording.
+    NSAppleEventsUsageDescription: StreamSage requires Apple Events permissions for text-to-speech functionality.
+linux:
+  target:
+    - AppImage
+    - deb
+    - rpm
+win:
+  target:
+    - nsis
+    - portable
+config:
+  devTools: false
+electronDownload:
+  arch: arm64
+extraMetadata:
+  main: src/main.js
+nsis:
+  oneClick: true
+  perMachine: false
+afterPack: "./after-pack.js"
+asar: true

@@ -1,0 +1,35 @@
+{
+    "manifest_version": 3,
+    "name": "Audio Capture Extension",
+    "version": "1.0",
+    "description": "Capture audio from the current tab",
+    "permissions": [
+      "tabCapture",
+      "activeTab",
+      "storage",
+      "downloads"
+    ],
+    "background": {
+      "service_worker": "background.js"
+    },
+    "action": {
+      "default_popup": "popup.html",
+      "default_title": "Audio Capture"
+    },
+    "commands": {
+      "start": {
+        "suggested_key": {
+          "default": "Command+4",
+          "mac": "Command+4"
+        },
+        "description": "Start Capture"
+      },
+      "stop": {
+        "suggested_key": {
+          "default": "Command+5",
+          "mac": "Command+5"
+        },
+        "description": "Stop Capture"
+      }
+    }
+  }
