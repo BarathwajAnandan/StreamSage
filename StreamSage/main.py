@@ -97,7 +97,7 @@ def main(app):
             if app.muted:
                 # current_time = time.time()
                 # if current_time - last_mute_log_time > 60:  # Log only once per minute
-                app.log("Microphone is muted, skipping audio processing")
+                # app.log("Microphone is muted, skipping audio processing")
                 #     last_mute_log_time = current_time
                 continue
 

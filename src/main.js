@@ -71,7 +71,7 @@ function toggleMacOSMic(mute) {
       console.error(`stderr: ${stderr}`);
       return;
     }
-    console.log(`Microphone ${mute ? 'muted' : 'unmuted'}`);
+    // console.log(`Microphone ${mute ? 'muted' : 'unmuted'}`);
     // Ensure Python script's mute state is synchronized
     pythonProcess.stdin.write(`set-mute ${mute}\n`);
     // Inform renderer process about the mute state change
@@ -127,6 +127,7 @@ ipcMain.on('save-audio', (event, arrayBuffer) => {
   }
   console.log('Received audio data. Size:', arrayBuffer.byteLength);
   const filePath = path.join(__dirname, '..', 'StreamSage', 'recorded_audio.webm');
+  
   
   const buffer = Buffer.from(arrayBuffer);
   console.log('Writing file:', filePath);
