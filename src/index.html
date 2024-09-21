@@ -9,14 +9,16 @@
     </style>
 </head>
 <body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/addons/p5.sound.min.js"></script>
     <h1>Mic Mute and Record App</h1>
     <div id="micStatus">Mic: Unmuted</div>
     <button id="toggleMute">Toggle Mute</button>
     <button id="toggleRecording">Toggle Recording</button>
     <div id="recordingStatus">Ready to record</div>
-    <progress id="levelMeter" value="0" max="100"></progress>
+    <!-- <progress id="levelMeter" value="0" max="100"></progress> -->
     <label>
-        <input type="checkbox" id="voiceEnabled" checked> Enable Voice
+        <input type="checkbox" id="voiceEnabled" disabled> Enable Voice
     </label>
     <div id="output"></div>
 

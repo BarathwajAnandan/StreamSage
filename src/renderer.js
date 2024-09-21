@@ -17,6 +17,59 @@ let recordedChunks = [];
 let audioContext;
 let audioStream;
 
+let mic, fft;
+let radius = 100; // Base radius for the visualization
+let maxRadius = 400; // Maximum radius for the circle
+let minRadius = 50; // Minimum radius for the circle
+
+// Initialize p5.js
+function setup() {
+  createCanvas(400, 400); // Set a smaller canvas size (e.g., 400x400)
+  noFill();
+  mic = new p5.AudioIn();
+  mic.start();
+  fft = new p5.FFT();
+  fft.setInput(mic);
+}
+
+function draw() {
+  background(0, 10); // Fading effect for the background
+  let spectrum = fft.analyze(); // Analyze the audio input
+  let amp = fft.getEnergy("bass"); // Get the energy of the bass frequencies
+
+  // Map the amplitude to the radius with more aggressive scaling
+  radius = map(amp, 0, 255, minRadius, maxRadius); // Adjust the radius based on amplitude
+
+  // Move origin to center but adjust the Y position to move it up
+  translate(width / 2, height / 4); // Move origin to center and up
+
+  // Draw the circle with a thicker stroke
+  stroke(255);
+  strokeWeight(8); // Thicker lines for better visibility
+  noFill();
+  ellipse(0, 0, radius, radius); // Draw the circle with the dynamic radius
+}
+
+// Mouse click event to toggle mute
+function mousePressed() {
+  // Check if the mouse is inside the circle
+  let d = dist(mouseX, mouseY, width / 2, height / 4); // Adjust Y position for the circle
+  if (d < radius / 2) { // Check if the click is within the circle
+    isMuted = !isMuted; // Toggle mute state
+    ipcRenderer.send('toggle-mute', isMuted); // Send mute state to main process
+  }
+}
+
+// Call startP5 when the document is ready
+function startP5() {
+  new p5();
+}
+
+// Resize canvas when the window is resized
+function windowResized() {
+  resizeCanvas(400, 400); // Keep the canvas size consistent
+}
+
 async function startRecording() {
   try {
     console.log('Requesting audio stream...');

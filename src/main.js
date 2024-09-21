@@ -27,6 +27,12 @@ function createWindow() {
 
   // Prevent the default menu from showing (which includes DevTools option)
   mainWindow.setMenu(null);
+
+  // Listen for the window close event
+  mainWindow.on('closed', () => {
+    mainWindow = null; // Dereference the window object
+    app.quit(); // Quit the application
+  });
 }
 
 function initializePythonProcess() {
