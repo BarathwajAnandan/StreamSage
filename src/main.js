@@ -3,9 +3,13 @@ const path = require('path');
 const { spawn, exec } = require('child_process');
 const fs = require('fs');
 const dotenv = require('dotenv');
+// const electronDebug = require('electron-debug'); // Add this line
 
 // Load environment variables from .env file
 dotenv.config();
+
+// Enable debug mode
+// electronDebug({ showDevTools: true }); // This will automatically open DevTools
 
 let mainWindow; // Declare mainWindow in the global scope
 let pythonProcess;
@@ -17,16 +21,18 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
-      devTools: false // Disable DevTools
+      devTools: true // Ensure DevTools are enabled
     },
   });
 
   mainWindow.loadFile('src/index.html');
   mainWindow.setPosition(mainWindow.getPosition()[0], 40);
-  // mainWindow.webContents.openDevTools(); // Remove or comment out this line if it exists
 
   // Prevent the default menu from showing (which includes DevTools option)
   mainWindow.setMenu(null);
+
+  // Open DevTools automatically
+  mainWindow.webContents.openDevTools(); // Open DevTools when the window is created
 
   // Listen for the window close event
   mainWindow.on('closed', () => {
@@ -92,7 +98,12 @@ app.whenReady().then(() => {
   initializePythonProcess();
 
   // Mute the microphone by default when the app starts
-  toggleMacOSMic(true);
+  pythonProcess.stdin.write(`set-mute ${true}\n`);
+  // Inform renderer process about the mute state change
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('mute-state-changed', true);
+  }
+  // toggleMacOSMic(true);
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -104,7 +115,12 @@ app.on('window-all-closed', function () {
 });
 
 ipcMain.on('toggle-mute', (event, shouldMute) => {
-  toggleMacOSMic(shouldMute);
+  pythonProcess.stdin.write(`set-mute ${shouldMute}\n`);
+  // Inform renderer process about the mute state change
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('mute-state-changed', shouldMute);
+  }
+  // toggleMacOSMic(shouldMute);
   // We don't need to send 'toggle-mute' here as it's already done in toggleMacOSMic
 });
 
