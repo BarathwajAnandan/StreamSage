@@ -17,7 +17,7 @@ let isRecording = false;
 let screenAudio_filename = 'recorded_audio.webm';
 let mic, fft;
 let radius = 100; // Base radius for the visualization
-let maxRadius = 400; // Maximum radius for the circle
+let maxRadius = 350; // Maximum radius for the circle
 let minRadius = 30; // Minimum radius for the circle
 // let fillOpacity = 10; // Initial fill opacity
 
@@ -26,7 +26,7 @@ let minRadius = 30; // Minimum radius for the circle
 
 // Initialize p5.js
 function setup() {
-  createCanvas(400, 400); // Set a smaller canvas size (e.g., 400x400)
+  createCanvas(300, 300); // Set a smaller canvas size (e.g., 400x400)
   noFill();
   mic = new p5.AudioIn();
   mic.start();
@@ -36,41 +36,38 @@ function setup() {
 }
 
 function draw() {
-  background(0, 10); // This line sets the background color to black with a 10% opacity, creating a fading effect.
-  let spectrum = fft.analyze(); // Analyze the audio input
-  let amp = fft.getEnergy("mid"); // Get the energy of all frequencies
-
-  // Check if muted and set radius accordingly
   if (isMuted) {
     background(0); // Solid black background when muted
     radius = minRadius; // Set to default radius when muted
   } else {
-    // Map the amplitude to the radius with more aggressive scaling
-    let targetRadius = isMuted ? minRadius : map(amp, 0, 180, minRadius, maxRadius);
-
-    // radius = map(amp, 0, 125, minRadius, maxRadius); // Adjust the radius based on amplitude
-    radius += (targetRadius - radius) * 0.1; // Easing factor for smooth transition
-
+    background(0, 10); // Fading effect when unmuted
   }
 
-  // Move origin to center but adjust the Y position to move it up
-  translate(width / 2, height / 2); // Move origin to center and up
+  let spectrum = fft.analyze();
+  let amp = fft.getEnergy("mid");
+
+  // Smoothly transition the radius with easing
+  let targetRadius = isMuted ? minRadius : map(amp, 0, 200, minRadius, maxRadius);
+  radius += (targetRadius - radius) * 0.1; // Easing factor for smooth transition
+
+  // Move origin to center of the window
+  translate(window.innerWidth*0.425, window.innerHeight*0.3); // Center the circle
   fill(255); // Set fill color to white
   noStroke(); // No stroke for the filled circle
   ellipse(0, 0, radius, radius); // Draw the filled circle
 
-  // Draw the circle with a thicker stroke
+  // Draw the outer circle with stroke
   stroke(255);
   strokeWeight(12); // Thicker lines for better visibility
   noFill();
-  ellipse(0, 0, radius, radius); // Draw the circle with the dynamic radius
+  ellipse(0, 0, radius, radius); // Draw the outer circle
 }
 
 // Mouse click event to toggle mute
 function mousePressed() {
   console.log('Mouse pressed');
   // Check if the mouse is inside the circle
-  let d = dist(mouseX, mouseY, width / 2, height / 2); // Adjust Y position for the circle
+  let d = dist(mouseX, mouseY, window.innerWidth*0.425, window.innerHeight*0.35); // Adjust Y position for the circle
   if (d < radius ) { // Check if the click is within the circle
     isMuted = !isMuted; // Toggle mute state
     ipcRenderer.send('toggle-mute', isMuted);
@@ -86,7 +83,7 @@ function startP5() {
 
 // Resize canvas when the window is resized
 function windowResized() {
-  resizeCanvas(400, 400); // Keep the canvas size consistent
+  resizeCanvas(window.innerWidth, window.innerHeight); // Resize canvas to match window size
 }
 
 // Remove the startRecording and stopRecording functions from here
@@ -95,16 +92,21 @@ function windowResized() {
 
 function updateRecordingUI() {
   recordingStatus.textContent = isRecording ? 'Recording...' : 'Ready to record';
-  toggleRecordingBtn.textContent = isRecording ? 'Stop Recording' : 'Start Recording';
+  // toggleRecordingBtn.textContent = isRecording ? 'Stop Recording' : 'Start Recording'
+  toggleRecording.className = isRecording ? 'fas fa-pause' : 'fas fa-play'; // Change icon
+
+
 }
 
 // Update the initial UI state
 updateMuteUI();
+updateRecordingUI();
 
 function updateMuteUI() {
   micStatus.textContent = `Mic: ${isMuted ? 'Muted' : 'Unmuted'}`;
   micStatus.style.color = isMuted ? 'red' : 'green';
-  toggleMuteBtn.textContent = isMuted ? 'Unmute' : 'Mute';
+  toggleMuteBtn.className = isMuted ? 'fas fa-microphone-slash' : 'fas fa-microphone'; // Change icon
+  // toggleMuteBtn.textContent = isMuted ? 'U' : 'M';
 }
 
 toggleMuteBtn.addEventListener('click', () => {

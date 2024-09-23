@@ -18,8 +18,8 @@ let pythonProcess;
 
 function createWindow() {
   mainWindow = new BrowserWindow({ // Assign to the global mainWindow
-    width: 500,
-    height: 500,
+    width: 400,
+    height: 400,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
