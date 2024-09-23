@@ -18,7 +18,8 @@ let screenAudio_filename = 'recorded_audio.webm';
 let mic, fft;
 let radius = 100; // Base radius for the visualization
 let maxRadius = 400; // Maximum radius for the circle
-let minRadius = 50; // Minimum radius for the circle
+let minRadius = 30; // Minimum radius for the circle
+// let fillOpacity = 10; // Initial fill opacity
 
 // Initialize AudioRecorder
 // const audioRecorder = new AudioRecorder();
@@ -31,38 +32,50 @@ function setup() {
   mic.start();
   fft = new p5.FFT();
   fft.setInput(mic);
+  frameRate(90); // Set frame rate to 60 FPS for smoother animation
 }
 
 function draw() {
-  background(0, 10); // Fading effect for the background
+  background(0, 10); // This line sets the background color to black with a 10% opacity, creating a fading effect.
   let spectrum = fft.analyze(); // Analyze the audio input
-  let amp = fft.getEnergy("bass"); // Get the energy of the bass frequencies
+  let amp = fft.getEnergy("mid"); // Get the energy of all frequencies
 
-  // Map the amplitude to the radius with more aggressive scaling
-  radius = map(amp, 0, 255, minRadius, maxRadius); // Adjust the radius based on amplitude
+  // Check if muted and set radius accordingly
+  if (isMuted) {
+    background(0); // Solid black background when muted
+    radius = minRadius; // Set to default radius when muted
+  } else {
+    // Map the amplitude to the radius with more aggressive scaling
+    let targetRadius = isMuted ? minRadius : map(amp, 0, 180, minRadius, maxRadius);
+
+    // radius = map(amp, 0, 125, minRadius, maxRadius); // Adjust the radius based on amplitude
+    radius += (targetRadius - radius) * 0.1; // Easing factor for smooth transition
+
+  }
 
   // Move origin to center but adjust the Y position to move it up
-  translate(width / 2, height / 4); // Move origin to center and up
+  translate(width / 2, height / 2); // Move origin to center and up
+  fill(255); // Set fill color to white
+  noStroke(); // No stroke for the filled circle
+  ellipse(0, 0, radius, radius); // Draw the filled circle
 
   // Draw the circle with a thicker stroke
   stroke(255);
-  strokeWeight(8); // Thicker lines for better visibility
+  strokeWeight(12); // Thicker lines for better visibility
   noFill();
   ellipse(0, 0, radius, radius); // Draw the circle with the dynamic radius
 }
 
 // Mouse click event to toggle mute
 function mousePressed() {
+  console.log('Mouse pressed');
   // Check if the mouse is inside the circle
-  let d = dist(mouseX, mouseY, width / 2, height / 4); // Adjust Y position for the circle
-  if (d < radius / 2) { // Check if the click is within the circle
+  let d = dist(mouseX, mouseY, width / 2, height / 2); // Adjust Y position for the circle
+  if (d < radius ) { // Check if the click is within the circle
     isMuted = !isMuted; // Toggle mute state
-    if (isMuted) {
-      audioRecorder.mute();
-    } else {
-      audioRecorder.unmute();
-    }
-    ipcRenderer.send('toggle-mute', isMuted); // Send mute state to main process
+    ipcRenderer.send('toggle-mute', isMuted);
+    console.log('Sent toggle-mute event with isMuted:', isMuted);
+    updateMuteUI();
   }
 }
 
@@ -134,9 +147,9 @@ toggleRecordingBtn.addEventListener('click', async () => {
   updateRecordingUI();
 });
 
-voiceEnabled.addEventListener('change', (e) => {
-  ipcRenderer.send('toggle-voice', e.target.checked);
-});
+// voiceEnabled.addEventListener('change', (e) => {
+//   ipcRenderer.send('toggle-voice', e.target.checked);
+// });
 
 // ... (keep all the remaining code, including ipcRenderer listeners) ...
 
@@ -158,9 +171,9 @@ ipcRenderer.on('python-output', (event, data) => {
   }
 });
 
-ipcRenderer.on('mute-state-changed', (event, muted, filename) => {
+ipcRenderer.on('mute-state-changed', (event, muted) => {
   isMuted = muted;
-  screenAudio_filename = filename;
-  console.log('Received screen audio filename:', screenAudio_filename);
+  // screenAudio_filename = filename;
+  // console.log('Received screen audio filename:', screenAudio_filename);
   updateMuteUI();
 });

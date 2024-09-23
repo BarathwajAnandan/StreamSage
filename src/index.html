@@ -1,26 +1,48 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mic Mute and Record App</title>
+    <!-- <title>Mic Mute and Record App</title> -->
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        button { margin: 10px 0; }
-        #output { height: 200px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px; }
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            background-color: black; /* Set the background color to black */
+            color: white; /* Set text color to white for better visibility */
+        }
+        button { 
+            margin: 10px 0; 
+            background-color: #444; /* Optional: Darker button background */
+            color: white; /* Button text color */
+            border: none; /* Remove border */
+            padding: 10px; /* Add padding */
+            cursor: pointer; /* Change cursor on hover */
+        }
+        button:hover {
+            background-color: #666; /* Change button color on hover */
+        }
+        #output { 
+            height: 200px; 
+            overflow-y: scroll; 
+            border: 1px solid #ccc; 
+            padding: 10px; 
+            background-color: #222; /* Dark background for output */
+            color: white; /* Text color for output */
+        }
     </style>
 </head>
 <body>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/addons/p5.sound.min.js"></script>
-    <h1>Mic Mute and Record App</h1>
+    <!-- <h1>Mic Mute and Record App</h1> -->
     <div id="micStatus">Mic: Unmuted</div>
     <button id="toggleMute">Toggle Mute</button>
     <button id="toggleRecording">Toggle Recording</button>
     <div id="recordingStatus">Ready to record</div>
     <!-- <progress id="levelMeter" value="0" max="100"></progress> -->
-    <label>
-        <input type="checkbox" id="voiceEnabled" disabled> Enable Voice
-    </label>
-    <div id="output"></div>
+    <!-- <label> -->
+        <!-- <input type="checkbox" id="voiceEnabled" disabled> Enable Voice -->
+    <!-- </label> -->
+    <!-- <div id="output"></div> -->
 
     <script src="renderer.js"></script>
 </body>

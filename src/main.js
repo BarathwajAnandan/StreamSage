@@ -34,7 +34,7 @@ function createWindow() {
   mainWindow.setMenu(null);
 
   // Open DevTools automatically
-  mainWindow.webContents.openDevTools(); // Open DevTools when the window is created
+  // mainWindow.webContents.openDevTools(); // Open DevTools when the window is created
 
   // Listen for the window close event
   mainWindow.on('closed', () => {
