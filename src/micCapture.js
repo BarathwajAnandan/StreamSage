@@ -1,66 +1,65 @@
 const { ipcRenderer } = require('electron');
 
-let mediaRecorder;
+let micRecorder;
 let recordedChunks = [];
 
-async function startRecording(filename) {
-  console.log('Starting recording with filename:', filename);
+async function startMicrophoneRecording() {
   try {
-    console.log('Requesting audio stream...');
+    console.log('Requesting microphone stream...');
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    console.log('Audio stream obtained');
+    console.log('Microphone stream obtained');
 
-    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+    micRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
     console.log('MediaRecorder created');
 
-    mediaRecorder.ondataavailable = (event) => {
+    micRecorder.ondataavailable = (event) => {
       if (event.data.size > 0) {
         recordedChunks.push(event.data);
-        console.log(`Received audio chunk: ${event.data.size} bytes`);
+        console.log(`Received microphone audio chunk: ${event.data.size} bytes`);
       } else {
-        console.log('Received empty audio chunk');
+        console.log('Received empty microphone audio chunk');
       }
     };
 
-    mediaRecorder.onstop = () => {
-      console.log(`Recording stopped. Total chunks: ${recordedChunks.length}`);
+    micRecorder.onstop = () => {
+      console.log(`Microphone audio recording stopped. Total chunks: ${recordedChunks.length}`);
       if (recordedChunks.length > 0) {
-        const audioBlob = new Blob(recordedChunks, { type: 'audio/webm' });
-        console.log('Audio blob created. Size:', audioBlob.size);
+        const audioBlob = new Blob(recordedChunks, { type: 'audio/wav' });
+        console.log('Microphone audio blob created. Size:', audioBlob.size);
         
         const reader = new FileReader();
         reader.onload = () => {
           const arrayBuffer = reader.result;
           try {
-            console.log('Sending audio data to main process', filename);  
-            ipcRenderer.send('save-audio', arrayBuffer, filename);
+            ipcRenderer.send('save-audio', arrayBuffer, 'user_question.wav');
+            console.log('Microphone audio data sent to main process');
           } catch (error) {
-            console.error('Error sending audio data to main process:', error);
+            console.error('Error sending microphone audio data to main process:', error);
           }
         };
         reader.onerror = (error) => {
-          console.error('Error reading blob:', error);
+          console.error('Error reading microphone audio blob:', error);
         };
         reader.readAsArrayBuffer(audioBlob);
       } else {
-        console.log('No audio data recorded');
+        console.log('No microphone audio data recorded');
       }
       recordedChunks = [];
     };
 
-    mediaRecorder.start(1000); // Capture data every second
-    console.log('Recording started');
+    micRecorder.start(1000); // Capture data every second
+    console.log('Microphone audio recording started');
     return true;
   } catch (error) {
-    console.error('Error starting recording:', error);
+    console.error('Error starting microphone audio recording:', error);
     return false;
   }
 }
 
-function stopRecording() {
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-    console.log('Stopping recording...');
-    mediaRecorder.stop();
+function stopMicrophoneRecording() {
+  if (micRecorder && micRecorder.state !== 'inactive') {
+    console.log('Stopping microphone audio recording...');
+    micRecorder.stop();
     return true;
   } else {
     console.log('MediaRecorder is not active');
@@ -68,7 +67,7 @@ function stopRecording() {
   }
 }
 
-function concatenateBuffers(buffers) {
+function concatenateMicrophoneBuffers(buffers) {
   const totalLength = buffers.reduce((acc, buf) => acc + buf.length, 0);
   const result = new Float32Array(totalLength);
   let offset = 0;
@@ -79,7 +78,7 @@ function concatenateBuffers(buffers) {
   return result;
 }
 
-function createWavFile(audioData, sampleRate) {
+function createMicrophoneWavFile(audioData, sampleRate) {
   const buffer = new ArrayBuffer(44 + audioData.length * 2);
   const view = new DataView(buffer);
 
@@ -115,8 +114,8 @@ function writeString(view, offset, string) {
 
 // Exporting functions to make them accessible from other modules
 module.exports = {
-  startRecording, // Function to start the recording process
-  stopRecording, // Function to stop the recording process
-  concatenateBuffers, // Function to concatenate audio buffers
-  createWavFile, // Function to create a WAV file from audio data
+  startMicrophoneRecording, // Function to start the microphone audio recording process
+  stopMicrophoneRecording, // Function to stop the microphone audio recording process
+  concatenateMicrophoneBuffers, // Function to concatenate microphone audio buffers
+  createMicrophoneWavFile, // Function to create a WAV file from microphone audio data
 };

@@ -190,7 +190,7 @@ def record_audio(filename, max_duration=10, silence_threshold=500, silence_durat
                     input=True,
                     frames_per_buffer=CHUNK)
 
-    print("* Recording")
+    print("*************** Recording")
 
     frames = []
     silent_chunks = 0
@@ -287,6 +287,39 @@ def chat_with_model(chat_client, context, question, model="llama3-8b-8192"):
             stop=None
         )
         return response.choices[0].message.content
+    except Exception as e:
+        raise Exception(f"Error during chat interaction: {str(e)}")
+
+def check_context(chat_client, question, context = '', model="llama3-8b-8192"):
+    try:
+        prompt = f"""
+        Check if the following question is relevant and makes sense or some noise. 
+        if it's not relevant, return "false"
+        if it's relevant, return "true"
+        question:
+        {question}
+        answer in one word.
+        """
+
+        response = chat_client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": "You are a helpful AI Assistant designed to check if the user's question is relevant and makes sense or some noise. If it's not relevant, return 'false'. If it's relevant, return 'true'."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.001,
+            max_tokens=1024,
+            top_p=0.95,
+            stream=False,
+            stop=None
+        )
+        response = response.choices[0].message.content
+        if 'true' in response.lower():
+            return True
+        elif 'false' in response.lower():
+            return False
+        else:
+            raise Exception(f"Error during chat interaction: {str(e)}")
     except Exception as e:
         raise Exception(f"Error during chat interaction: {str(e)}")
 

@@ -1,5 +1,7 @@
 const { ipcRenderer } = require('electron');
+// const AudioRecorder = require('./audioRecorder');
 const { startRecording, stopRecording } = require('./screenCapture');
+const { startMicrophoneRecording, stopMicrophoneRecording } = require('./micCapture');
 
 const micStatus = document.getElementById('micStatus');
 const toggleMuteBtn = document.getElementById('toggleMute');
@@ -12,11 +14,14 @@ const questionStatus = document.getElementById('questionStatus');
 
 let isMuted = true;  // Start muted
 let isRecording = false;
-
+let screenAudio_filename = 'recorded_audio.webm';
 let mic, fft;
 let radius = 100; // Base radius for the visualization
 let maxRadius = 400; // Maximum radius for the circle
 let minRadius = 50; // Minimum radius for the circle
+
+// Initialize AudioRecorder
+// const audioRecorder = new AudioRecorder();
 
 // Initialize p5.js
 function setup() {
@@ -52,6 +57,11 @@ function mousePressed() {
   let d = dist(mouseX, mouseY, width / 2, height / 4); // Adjust Y position for the circle
   if (d < radius / 2) { // Check if the click is within the circle
     isMuted = !isMuted; // Toggle mute state
+    if (isMuted) {
+      audioRecorder.mute();
+    } else {
+      audioRecorder.unmute();
+    }
     ipcRenderer.send('toggle-mute', isMuted); // Send mute state to main process
   }
 }
@@ -86,6 +96,19 @@ function updateMuteUI() {
 
 toggleMuteBtn.addEventListener('click', () => {
   isMuted = !isMuted;
+  if (isMuted) {
+    // console.log('Muted. Stopping recording mic');
+    // stopMicrophoneRecording();
+    // audioRecorder.stopRecording();
+  } else {
+    // console.log('Unmuted/Please ask your question verbally..');
+    // ipcRenderer.send('toggle-mic-recording');
+    // console.log('Sent toggle-mic-recording');
+    // startMicrophoneRecording();
+    //call to python to start recording
+    // pythonProcess.stdin.write('process-audio\n');
+  }
+  // Remove the direct IPC call as muting is now handled by AudioRecorder
   ipcRenderer.send('toggle-mute', isMuted);
   updateMuteUI();
 });
@@ -99,8 +122,10 @@ toggleRecordingBtn.addEventListener('click', async () => {
       console.error('Failed to stop recording');
     }
   } else {
-    if (await startRecording()) {
+    if (await startRecording(screenAudio_filename)) {
       isRecording = true;
+      
+      console.log('Calling start-recording with filename:', screenAudio_filename);
       ipcRenderer.send('start-recording');
     } else {
       console.error('Failed to start recording');
@@ -133,7 +158,9 @@ ipcRenderer.on('python-output', (event, data) => {
   }
 });
 
-ipcRenderer.on('mute-state-changed', (event, muted) => {
+ipcRenderer.on('mute-state-changed', (event, muted, filename) => {
   isMuted = muted;
+  screenAudio_filename = filename;
+  console.log('Received screen audio filename:', screenAudio_filename);
   updateMuteUI();
 });

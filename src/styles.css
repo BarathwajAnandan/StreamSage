@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body { 
+    font-family: Arial, sans-serif; 
+    padding: 20px; 
+    background-color: #f4f4f4; 
+    color: #333; 
+    display: flex; /* Added for centering */
+    flex-direction: column; /* Added for vertical alignment */
+    align-items: center; /* Center horizontally */
+    justify-content: center; /* Center vertically */
+    height: 100vh; /* Full viewport height */
+}
+
+h1 { 
+    text-align: center; 
+    color: #4CAF50; 
+}
+button { 
+    margin: 10px 0; 
+    padding: 10px 20px; 
+    font-size: 16px; 
+    border: none; 
+    border-radius: 5px; 
+    cursor: pointer; 
+    background-color: #4CAF50; 
+    color: white; 
+    transition: background-color 0.3s; 
+}
+button:hover { 
+    background-color: #45a049; 
+}
+#output { 
+    height: 200px; 
+    overflow-y: scroll; 
+    border: 1px solid #ccc; 
+    padding: 10px; 
+    background-color: white; 
+    border-radius: 5px; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+}
+#micStatus, #recordingStatus { 
+    font-weight: bold; 
+    margin: 10px 0; 
+    text-align: center; 
+}
+
+/* Add this to center the canvas */
+canvas {
+    display: block; /* Ensures the canvas is treated as a block element */
+    margin: 0 auto; /* Centers the canvas horizontally */
+}
