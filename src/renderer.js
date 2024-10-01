@@ -6,6 +6,7 @@ const { startMicrophoneRecording, stopMicrophoneRecording } = require('./micCapt
 const micStatus = document.getElementById('micStatus');
 const toggleMuteBtn = document.getElementById('toggleMute');
 const toggleRecordingBtn = document.getElementById('toggleRecording');
+const statusArea = document.getElementById('statusArea');
 const recordingStatus = document.getElementById('recordingStatus');
 const levelMeter = document.getElementById('levelMeter');
 const voiceEnabled = document.getElementById('voiceEnabled');
@@ -103,6 +104,13 @@ function updateRecordingUI() {
   // toggleRecordingBtn.textContent = isRecording ? 'Stop Recording' : 'Start Recording'
   toggleRecording.className = isRecording ? 'fas fa-pause' : 'fas fa-play'; // Change icon
 
+  if (isRecording) {
+    updateStatus('Recording...');
+  }
+  else {
+    updateStatus('Ready to record');
+  }
+
 
 }
 
@@ -114,6 +122,13 @@ function updateMuteUI() {
   micStatus.textContent = `Mic: ${isMuted ? 'Muted' : 'Unmuted'}`;
   micStatus.style.color = isMuted ? 'red' : 'green';
   toggleMuteBtn.className = isMuted ? 'fas fa-microphone-slash' : 'fas fa-microphone'; // Change icon
+
+  if (!isMuted) {
+    updateStatus('Listening... Ask your question');
+  }
+  else {
+    updateStatus('Idle');
+  }
   // toggleMuteBtn.textContent = isMuted ? 'U' : 'M';
 }
 
@@ -189,3 +204,16 @@ ipcRenderer.on('mute-state-changed', (event, muted) => {
   // console.log('Received screen audio filename:', screenAudio_filename);
   updateMuteUI();
 });
+
+// Function to update status text and apply animation
+function updateStatus(message) {
+    statusArea.textContent = message; // Update the status text
+    statusArea.style.opacity = 0; // Start with opacity 0 for fade-in effect
+    statusArea.style.transition = 'opacity 0.5s'; // Set transition for smooth animation
+    setTimeout(() => {
+        statusArea.style.opacity = 1; // Fade in the status text
+    }, 50); // Delay to allow the opacity change to take effect
+}
+
+// Example usage
+updateStatus('Idle');
