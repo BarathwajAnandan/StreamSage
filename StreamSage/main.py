@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 from groq import Groq
-from audio_utils import MacTTS, transcribe_audio, chat_with_model, record_audio, check_context
+from audio_utils import MacTTS,DeepGram, transcribe_audio, chat_with_model, record_audio, check_context
 import time
 import sys
 import json
@@ -107,7 +107,10 @@ def handle_commands(app):
 
 def main(app):
     try:
-        tts = MacTTS()
+        if sys.platform == 'darwin':
+            tts = MacTTS()
+        else:
+            tts = DeepGram()
         last_modified_time = 0
 
         last_mute_log_time = 0

@@ -39,6 +39,14 @@
             background-color: #222; /* Dark background for output */
             color: white; /* Text color for output */
         }
+        #statusArea {
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: white;
+            opacity: 0.7;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -56,6 +64,11 @@
     <!-- </label> -->
     <!-- <div id="output"></div> -->
 
+    <!-- Move the status area to the bottom -->
     <script src="renderer.js"></script>
+    
+    <!-- Subtle status area below the mic animation -->
+    <div id="statusArea">Idle</div>
+
 </body>
 </html>

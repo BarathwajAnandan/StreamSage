@@ -69,10 +69,13 @@ function mousePressed() {
   // Check if the mouse is inside the circle
   let d = dist(mouseX, mouseY, window.innerWidth*0.425, window.innerHeight*0.35); // Adjust Y position for the circle
   if (d < radius ) { // Check if the click is within the circle
-    isMuted = !isMuted; // Toggle mute state
-    ipcRenderer.send('toggle-mute', isMuted);
-    console.log('Sent toggle-mute event with isMuted:', isMuted);
-    updateMuteUI();
+    // send mute only when recording is not happening
+    if (!isRecording) {
+      isMuted = !isMuted; // Toggle mute state
+      ipcRenderer.send('toggle-mute', isMuted);
+      console.log('Sent toggle-mute event with isMuted:', isMuted);
+      updateMuteUI();
+    }
   }
 }
 
@@ -92,6 +95,11 @@ function windowResized() {
 
 function updateRecordingUI() {
   recordingStatus.textContent = isRecording ? 'Recording...' : 'Ready to record';
+  // if recording - disable toggle mute
+  toggleMuteBtn.disabled = isRecording;
+  toggleMuteBtn.style.opacity = isRecording ? 0.5 : 1;
+  //animate toggleMuteBtn
+  toggleMuteBtn.style.transform = isRecording ? 'scale(0.9)' : 'scale(1)';
   // toggleRecordingBtn.textContent = isRecording ? 'Stop Recording' : 'Start Recording'
   toggleRecording.className = isRecording ? 'fas fa-pause' : 'fas fa-play'; // Change icon
 
@@ -124,8 +132,10 @@ toggleMuteBtn.addEventListener('click', () => {
     // pythonProcess.stdin.write('process-audio\n');
   }
   // Remove the direct IPC call as muting is now handled by AudioRecorder
-  ipcRenderer.send('toggle-mute', isMuted);
-  updateMuteUI();
+  if (!isRecording) {
+    ipcRenderer.send('toggle-mute', isMuted);
+    updateMuteUI();
+  }
 });
 
 toggleRecordingBtn.addEventListener('click', async () => {
