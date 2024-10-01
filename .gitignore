@@ -1,1 +1,5 @@
 node_modules
+StreamSage/main.pyc
+StreamSage/__pycache__
+StreamSage/*.wav
+StreamSage/*.webm
