@@ -1,49 +1,58 @@
 const { app, BrowserWindow, ipcMain, desktopCapturer } = require('electron');
 const path = require('path');
-const { spawn, exec } = require('child_process');
+const { spawn } = require('child_process');
 const fs = require('fs');
 const dotenv = require('dotenv');
-let screenAudio_filename = 'recorded_audio.webm';
-
-// const electronDebug = require('electron-debug'); // Add this line
 
 // Load environment variables from .env file
 dotenv.config();
 
-// Enable debug mode
-// electronDebug({ showDevTools: true }); // This will automatically open DevTools
-
-let mainWindow; // Declare mainWindow in the global scope
+let mainWindow;
 let pythonProcess;
+const screenAudio_filename = 'recorded_audio.webm';
 
+/**
+ * Creates and configures the main application window.
+ */
 function createWindow() {
-  mainWindow = new BrowserWindow({ // Assign to the global mainWindow
+  mainWindow = new BrowserWindow({
     width: 400,
     height: 400,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
-      devTools: true // Ensure DevTools are enabled
+      devTools: true
     },
   });
 
   mainWindow.loadFile('src/index.html');
   mainWindow.setPosition(mainWindow.getPosition()[0], 40);
-
-  // Prevent the default menu from showing (which includes DevTools option)
   mainWindow.setMenu(null);
 
-  // Open DevTools automatically
-  // mainWindow.webContents.openDevTools(); // Open DevTools when the window is created
-
-  // Listen for the window close event
   mainWindow.on('closed', () => {
-    mainWindow = null; // Dereference the window object
-    app.quit(); // Quit the application
+    mainWindow = null;
+    app.quit();
   });
 }
 
+/**
+ * Initializes the Python process and sets up communication.
+ */
 function initializePythonProcess() {
+  const { pythonPath, pythonScriptPath } = getPythonPaths();
+  logPythonPaths(pythonPath, pythonScriptPath);
+
+  pythonProcess = spawnPythonProcess(pythonPath, pythonScriptPath);
+  setupPythonProcessListeners(pythonProcess);
+  
+  sendCommandToPython('set-mute true');
+}
+
+/**
+ * Determines the correct paths for Python executable and script.
+ * @returns {Object} An object containing pythonPath and pythonScriptPath.
+ */
+function getPythonPaths() {
   const pythonScriptPath = app.isPackaged
     ? path.join(process.resourcesPath, 'StreamSage', 'main.py')
     : path.join(__dirname, '..', 'StreamSage', 'main.py');
@@ -52,69 +61,168 @@ function initializePythonProcess() {
     ? path.join(process.resourcesPath, 'python')
     : '/opt/anaconda3/envs/quiz/bin/python';
 
-  console.log('Python path:', pythonPath);
-  console.log('Python script path:', pythonScriptPath);
-
-  pythonProcess = spawn(pythonPath, [pythonScriptPath]);
-
-  pythonProcess.stdout.on('data', (data) => {
-    if (mainWindow) {
-      mainWindow.webContents.send('python-output', data.toString());
-    }
-  });
-
-  pythonProcess.stderr.on('data', (data) => {
-    console.error(`Python Error: ${data}`);
-  });
-
-  // Send initial mute command after the Python process is initialized
-  pythonProcess.stdin.write('set-mute true\n');
+  return { pythonPath, pythonScriptPath };
 }
 
-app.whenReady().then(() => {
+/**
+ * Logs Python paths for debugging purposes.
+ * @param {string} pythonPath - Path to Python executable.
+ * @param {string} pythonScriptPath - Path to Python script.
+ */
+function logPythonPaths(pythonPath, pythonScriptPath) {
+  console.log('Python path:', pythonPath);
+  console.log('Python script path:', pythonScriptPath);
+}
+
+/**
+ * Spawns the Python process.
+ * @param {string} pythonPath - Path to Python executable.
+ * @param {string} pythonScriptPath - Path to Python script.
+ * @returns {ChildProcess} The spawned Python process.
+ */
+function spawnPythonProcess(pythonPath, pythonScriptPath) {
+  return spawn(pythonPath, [pythonScriptPath]);
+}
+
+/**
+ * Sets up listeners for the Python process output.
+ * @param {ChildProcess} process - The Python child process.
+ */
+function setupPythonProcessListeners(process) {
+  process.stdout.on('data', handlePythonOutput);
+  process.stderr.on('data', handlePythonError);
+}
+
+/**
+ * Handles standard output from the Python process.
+ * @param {Buffer} data - The output data.
+ */
+function handlePythonOutput(data) {
+  if (mainWindow) {
+    mainWindow.webContents.send('python-output', data.toString());
+  }
+}
+
+/**
+ * Handles error output from the Python process.
+ * @param {Buffer} data - The error data.
+ */
+function handlePythonError(data) {
+  console.error(`Python Error: ${data}`);
+}
+
+/**
+ * Sends a command to the Python process.
+ * @param {string} command - The command to send.
+ */
+function sendCommandToPython(command) {
+  pythonProcess.stdin.write(`${command}\n`);
+}
+
+/**
+ * Initializes the application when it's ready.
+ */
+function initializeApp() {
   createWindow();
   initializePythonProcess();
-  
 
-  // Mute the microphone by default when the app starts
-  pythonProcess.stdin.write(`set-mute ${true}\n`);
-  // Inform renderer process about the mute state change
+  sendCommandToPython(`set-mute ${true}`);
   if (mainWindow && !mainWindow.isDestroyed()) {
     console.log('Sending mute-state-changed event with filename:', screenAudio_filename);
     mainWindow.webContents.send('mute-state-changed', true, screenAudio_filename);
   }
+}
 
-  app.on('activate', function () {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+/**
+ * Handles saving audio data to a file.
+ * @param {ArrayBuffer} arrayBuffer - The audio data.
+ * @param {string} fileName - The name of the file to save.
+ */
+function handleSaveAudio(arrayBuffer, fileName) {
+  if (!(arrayBuffer instanceof ArrayBuffer)) {
+    console.error('Received data is not an ArrayBuffer:', arrayBuffer);
+    return;
+  }
+
+  const filePath = path.join(__dirname, '..', 'StreamSage', fileName);
+  const buffer = Buffer.from(arrayBuffer);
+
+  fs.writeFile(filePath, buffer, (err) => {
+    if (err) {
+      console.error('Failed to save audio:', err);
+    } else {
+      console.log('Audio saved successfully. File size:', buffer.length);
+      if (buffer.length > 0) {
+        console.log('Sending process-audio command to Python');
+        sendCommandToPython('record-mic');
+      } else {
+        console.log('Audio file is empty, not processing');
+      }
+    }
   });
-});
+}
 
-app.on('window-all-closed', function () {
+/**
+ * Handles saving and processing a user question.
+ * @param {ArrayBuffer} arrayBuffer - The question audio data.
+ */
+function handleSaveQuestion(arrayBuffer) {
+  if (!(arrayBuffer instanceof ArrayBuffer)) {
+    console.error('Received data is not an ArrayBuffer:', arrayBuffer);
+    return;
+  }
+
+  const filePath = path.join(__dirname, '..', 'StreamSage', 'user_question.wav');
+  const buffer = Buffer.from(arrayBuffer);
+
+  fs.writeFile(filePath, buffer, (err) => {
+    if (err) {
+      console.error('Failed to save audio:', err);
+    } else {
+      console.log('Audio saved successfully. File size:', buffer.length);
+      if (buffer.length > 0) {
+        console.log('Sending process-question command to Python');
+        sendCommandToPython('process-question');
+      } else {
+        console.log('Audio file is empty, not processing');
+      }
+      sendCommandToPython('process-question');
+    }
+  });
+}
+
+// Application event listeners
+app.whenReady().then(initializeApp);
+
+app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
+app.on('activate', () => {
+  if (BrowserWindow.getAllWindows().length === 0) createWindow();
+});
+
+// IPC event listeners
 ipcMain.on('toggle-mute', (event, shouldMute) => {
-  pythonProcess.stdin.write(`set-mute ${shouldMute}\n`);
-  // Inform renderer process about the mute state change
+  sendCommandToPython(`set-mute ${shouldMute}`);
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('mute-state-changed', shouldMute);
   }
 });
 
 ipcMain.on('toggle-mic-recording', () => {
-  pythonProcess.stdin.write(`set-mute false\n`);
-  // pythonProcess.stdin.write('toggle-mic-recording\n');
+  sendCommandToPython('set-mute false');
 });
 
 ipcMain.on('toggle-recording', () => {
-  pythonProcess.stdin.write('toggle-recording\n');
+  sendCommandToPython('toggle-recording');
 });
 
 ipcMain.on('toggle-voice', (event, isEnabled) => {
-  pythonProcess.stdin.write(`toggle-voice ${isEnabled}\n`);
+  sendCommandToPython(`toggle-voice ${isEnabled}`);
 });
 
-ipcMain.handle('get-sources', async (event) => {
+ipcMain.handle('get-sources', async () => {
   const sources = await desktopCapturer.getSources({ types: ['window', 'screen'] });
   return sources.map(source => ({
     id: source.id,
@@ -125,72 +233,26 @@ ipcMain.handle('get-sources', async (event) => {
 
 ipcMain.on('save-audio', (event, arrayBuffer, fileName) => {
   console.log('Received save-audio event');
-  if (!(arrayBuffer instanceof ArrayBuffer)) {
-    console.error('Received data is not an ArrayBuffer:', arrayBuffer);
-    return;
-  }
-  console.log('Received audio data. Size:', arrayBuffer.byteLength);
-  const filePath = path.join(__dirname, '..', 'StreamSage', fileName);
-  
-  
-  const buffer = Buffer.from(arrayBuffer);
-  console.log('Writing file:', filePath);
-  fs.writeFile(filePath, buffer, (err) => {
-    if (err) {
-      console.error('Failed to save audio:', err);
-    } else {
-      console.log('Audio saved successfully. File size:', buffer.length);
-      if (buffer.length > 0) {
-        console.log('Sending process-audio command to Python');
-        pythonProcess.stdin.write('record-mic\n');
-      } else {
-        console.log('Audio file is empty, not processing');
-      }
-    }
-  });
+  handleSaveAudio(arrayBuffer, fileName);
 });
-
 
 ipcMain.on('save-question', (event, arrayBuffer) => {
   console.log('Received save-question event');
-  if (!(arrayBuffer instanceof ArrayBuffer)) {
-    console.error('Received data is not an ArrayBuffer:', arrayBuffer);
-    return;
-  }
-  console.log('Received audio data. Size:', arrayBuffer.byteLength);
-  const filePath = path.join(__dirname, '..', 'StreamSage', 'user_question.wav');
-  const buffer = Buffer.from(arrayBuffer);
-  console.log('Writing file:', filePath);
-  fs.writeFile(filePath, buffer, (err) => {
-    if (err) {
-      console.error('Failed to save audio:', err);
-    } else {
-      console.log('Audio saved successfully. File size:', buffer.length);
-      if (buffer.length > 0) {
-        console.log('Sending process-audio command to Python');
-        pythonProcess.stdin.write('process-question\n');
-      } else {
-        console.log('Audio file is empty, not processing');
-      }
-      pythonProcess.stdin.write('process-question\n');
-    }
-  });
+  handleSaveQuestion(arrayBuffer);
 });
 
 ipcMain.on('start-recording', () => {
-  // Don't create an empty file here, let the actual recording process create it
-  pythonProcess.stdin.write('start-recording\n');
+  sendCommandToPython('start-recording');
 });
 
 ipcMain.on('stop-recording', () => {
-  // Don't update the file here, let the actual recording process handle it
-  pythonProcess.stdin.write('stop-recording\n');
+  sendCommandToPython('stop-recording');
 });
 
-const filePathToDelete = path.join(__dirname, `../StreamSage/${screenAudio_filename}`); // Update with the correct extension if needed
+// Clean up on app quit
+const filePathToDelete = path.join(__dirname, `../StreamSage/${screenAudio_filename}`);
 
 app.on('before-quit', () => {
-  // Delete the file when the app is about to quit
   fs.unlink(filePathToDelete, (err) => {
     if (err) {
       console.error('Error deleting file:', err);
