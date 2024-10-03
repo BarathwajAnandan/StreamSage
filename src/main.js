@@ -1,6 +1,8 @@
 const { app, BrowserWindow, ipcMain, desktopCapturer } = require('electron');
 const path = require('path');
-const { spawn } = require('child_process');
+
+const { spawn, exec, execSync } = require('child_process'); // Ensure execSync is imported
+
 const fs = require('fs');
 const dotenv = require('dotenv');
 
@@ -59,7 +61,7 @@ function getPythonPaths() {
 
   const pythonPath = app.isPackaged
     ? path.join(process.resourcesPath, 'python')
-    : '/opt/anaconda3/envs/quiz/bin/python';
+    : execSync('which python').toString().trim(); // Get the current Python path from the current environment
 
   return { pythonPath, pythonScriptPath };
 }
