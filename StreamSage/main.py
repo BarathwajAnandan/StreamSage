@@ -36,14 +36,13 @@ class ElectronApp:
         self.is_stop_recording = False
         self.debug_enabled = False  # Debugging enabled by default
 
-    def log(self, message, tag=""):
-        if self.debug_enabled:
+    def safe_log(self, message, tag=""):
             print(json.dumps({"type": "log", "message": message, "tag": tag}))
             sys.stdout.flush()
 
-    def update_level_meter(self, amplitude):
+    def log(self, message, tag=""):
         if self.debug_enabled:
-            print(json.dumps({"type": "level_meter", "amplitude": amplitude}))
+            print(json.dumps({"type": "log", "message": message, "tag": tag}))
             sys.stdout.flush()
 
     def update_status(self):
@@ -168,7 +167,7 @@ def main(app):
                 else:
                     app.log("Screen audio File not modified since last check. Skipping processing.", "main")
             else:
-                app.log(f"Waiting for {app.file_to_watch} or stop-recording command", "main")
+                app.safe_log(f"Waiting for {app.file_to_watch} or stop-recording command", "main")
                 # continue
 
 

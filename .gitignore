@@ -3,7 +3,10 @@ node_modules
 .env
 .DS_Store
 StreamSage/__pycache__/audio_utils.cpython-310.pyc
-./StreamSage/__pycache__
+./StreamSage/__pycache__/*
 ./StreamSage/*.wav
 StreamSage/*.webm
 package-lock.json
+**/*.webm
+**/*.pyc/
+StreamSage/__pycache__/*
