@@ -118,6 +118,7 @@ function toggleMute() {
 // Toggle recording state
 async function toggleRecording() {
   if (state.isRecording) {
+    console.log("Stopping recording...");
     if (stopRecording()) {
       state.isRecording = false;
       ipcRenderer.send('stop-recording');
@@ -125,9 +126,10 @@ async function toggleRecording() {
       console.error('Failed to stop recording');
     }
   } else {
+    console.log("Starting recording...");
     if (await startRecording(state.screenAudio_filename)) {
       state.isRecording = true;
-      ipcRenderer.send('start-recording');
+      // ipcRenderer.send('start-recording');
     } else {
       console.error('Failed to start recording');
     }
@@ -151,21 +153,8 @@ elements.toggleRecordingBtn.addEventListener('click', toggleRecording);
 
 // IPC listeners
 ipcRenderer.on('python-output', (event, data) => {
-  elements.output.innerHTML += data + '<br>';
-  elements.output.scrollTop = elements.output.scrollHeight;
-
-  if (data.includes('amplitude:')) {
-    const amplitude = parseFloat(data.split(':')[1]);
-    elements.levelMeter.value = amplitude;
-  }
-
-  if (data.includes('Please ask your question verbally..')) {
-    elements.questionStatus.textContent = 'Listening for question...';
-    elements.questionStatus.style.color = 'green';
-  } else if (data.includes('User:')) {
-    elements.questionStatus.textContent = 'Question received';
-    elements.questionStatus.style.color = 'blue';
-  }
+  // Handle the received data, e.g., update the UI
+  console.log(data);
 });
 
 ipcRenderer.on('mute-state-changed', (event, muted) => {

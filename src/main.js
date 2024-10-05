@@ -1,8 +1,5 @@
 const { app, BrowserWindow, ipcMain, desktopCapturer } = require('electron');
 const path = require('path');
-
-const { spawn, exec, execSync } = require('child_process'); // Ensure execSync is imported
-
 const fs = require('fs');
 const dotenv = require('dotenv');
 
@@ -10,9 +7,22 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 let mainWindow;
-let pythonProcess;
+let backendProcessor;
 const screenAudio_filename = 'recorded_audio.webm';
 
+const BackendProcessor = require('./main_backend');
+
+function initializeBackendProcessor() {
+  backendProcessor = new BackendProcessor(mainWindow);
+  backendProcessor.run().catch(console.error);
+}
+
+async function listDevices() {
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  devices.forEach(device => {
+    console.log(`${device.kind}: ${device.label} id = ${device.deviceId}`);
+  });
+}
 /**
  * Creates and configures the main application window.
  */
@@ -35,104 +45,11 @@ function createWindow() {
     mainWindow = null;
     app.quit();
   });
-}
 
-/**
- * Initializes the Python process and sets up communication.
- */
-function initializePythonProcess() {
-  const { pythonPath, pythonScriptPath } = getPythonPaths();
-  logPythonPaths(pythonPath, pythonScriptPath);
+  initializeBackendProcessor();
 
-  pythonProcess = spawnPythonProcess(pythonPath, pythonScriptPath);
-  setupPythonProcessListeners(pythonProcess);
-  
-  sendCommandToPython('set-mute true');
-}
-
-/**
- * Determines the correct paths for Python executable and script.
- * @returns {Object} An object containing pythonPath and pythonScriptPath.
- */
-function getPythonPaths() {
-  const pythonScriptPath = app.isPackaged
-    ? path.join(process.resourcesPath, 'StreamSage', 'main.py')
-    : path.join(__dirname, '..', 'StreamSage', 'main.py');
-
-  const pythonPath = app.isPackaged
-    ? path.join(process.resourcesPath, 'python')
-    : execSync('which python').toString().trim(); // Get the current Python path from the current environment
-
-  return { pythonPath, pythonScriptPath };
-}
-
-/**
- * Logs Python paths for debugging purposes.
- * @param {string} pythonPath - Path to Python executable.
- * @param {string} pythonScriptPath - Path to Python script.
- */
-function logPythonPaths(pythonPath, pythonScriptPath) {
-  console.log('Python path:', pythonPath);
-  console.log('Python script path:', pythonScriptPath);
-}
-
-/**
- * Spawns the Python process.
- * @param {string} pythonPath - Path to Python executable.
- * @param {string} pythonScriptPath - Path to Python script.
- * @returns {ChildProcess} The spawned Python process.
- */
-function spawnPythonProcess(pythonPath, pythonScriptPath) {
-  return spawn(pythonPath, [pythonScriptPath]);
-}
-
-/**
- * Sets up listeners for the Python process output.
- * @param {ChildProcess} process - The Python child process.
- */
-function setupPythonProcessListeners(process) {
-  process.stdout.on('data', handlePythonOutput);
-  process.stderr.on('data', handlePythonError);
-}
-
-/**
- * Handles standard output from the Python process.
- * @param {Buffer} data - The output data.
- */
-function handlePythonOutput(data) {
-  if (mainWindow) {
-    mainWindow.webContents.send('python-output', data.toString());
-  }
-}
-
-/**
- * Handles error output from the Python process.
- * @param {Buffer} data - The error data.
- */
-function handlePythonError(data) {
-  console.error(`Python Error: ${data}`);
-}
-
-/**
- * Sends a command to the Python process.
- * @param {string} command - The command to send.
- */
-function sendCommandToPython(command) {
-  pythonProcess.stdin.write(`${command}\n`);
-}
-
-/**
- * Initializes the application when it's ready.
- */
-function initializeApp() {
-  createWindow();
-  initializePythonProcess();
-
-  sendCommandToPython(`set-mute ${true}`);
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    console.log('Sending mute-state-changed event with filename:', screenAudio_filename);
-    mainWindow.webContents.send('mute-state-changed', true, screenAudio_filename);
-  }
+  // Enable the console window
+  mainWindow.webContents.openDevTools();
 }
 
 /**
@@ -155,8 +72,8 @@ function handleSaveAudio(arrayBuffer, fileName) {
     } else {
       console.log('Audio saved successfully. File size:', buffer.length);
       if (buffer.length > 0) {
-        console.log('Sending process-audio command to Python');
-        sendCommandToPython('record-mic');
+        console.log('Processing audio');
+        backendProcessor.processAudio();
       } else {
         console.log('Audio file is empty, not processing');
       }
@@ -183,18 +100,17 @@ function handleSaveQuestion(arrayBuffer) {
     } else {
       console.log('Audio saved successfully. File size:', buffer.length);
       if (buffer.length > 0) {
-        console.log('Sending process-question command to Python');
-        sendCommandToPython('process-question');
+        console.log('Processing question');
+        backendProcessor.processQuestion();
       } else {
         console.log('Audio file is empty, not processing');
       }
-      sendCommandToPython('process-question');
     }
   });
 }
 
 // Application event listeners
-app.whenReady().then(initializeApp);
+app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
@@ -206,22 +122,22 @@ app.on('activate', () => {
 
 // IPC event listeners
 ipcMain.on('toggle-mute', (event, shouldMute) => {
-  sendCommandToPython(`set-mute ${shouldMute}`);
+  backendProcessor.setMute(shouldMute);
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('mute-state-changed', shouldMute);
   }
 });
 
 ipcMain.on('toggle-mic-recording', () => {
-  sendCommandToPython('set-mute false');
+  backendProcessor.toggleMicRecording();
 });
 
 ipcMain.on('toggle-recording', () => {
-  sendCommandToPython('toggle-recording');
+  // backendProcessor.toggleRecording();
 });
 
 ipcMain.on('toggle-voice', (event, isEnabled) => {
-  sendCommandToPython(`toggle-voice ${isEnabled}`);
+  backendProcessor.setVoiceEnabled(isEnabled);
 });
 
 ipcMain.handle('get-sources', async () => {
@@ -244,11 +160,11 @@ ipcMain.on('save-question', (event, arrayBuffer) => {
 });
 
 ipcMain.on('start-recording', () => {
-  sendCommandToPython('start-recording');
+  backendProcessor.toggleRecording();
 });
 
 ipcMain.on('stop-recording', () => {
-  sendCommandToPython('stop-recording');
+  backendProcessor.stopRecording();
 });
 
 // Clean up on app quit
