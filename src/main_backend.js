@@ -14,13 +14,6 @@ const fs = require("fs");
 // Load environment variables from .env file
 dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
-// function to send message to renderer
-let current_status = "";
-async function sendStatusToRenderer(status) 
-{
-  current_status = status;
-  // ipcMain.send('update-status', status);
-}
 
 
 
@@ -51,8 +44,7 @@ class BackendProcessor
 
   async sendStatusToRenderer(status) 
   {
-    current_status = status;
-    // this.mainWindow.webContents.send('update-status', status);
+    this.mainWindow.webContents.send('update-status', status);
   }
   log(message, tag = "") 
   {
@@ -217,7 +209,7 @@ class BackendProcessor
             }
             else
             {
-              sendStatusToRenderer("Recording....")
+              this.sendStatusToRenderer("Recording....")
             }
           }, 1000); // Check every 1 second
         });
@@ -225,13 +217,13 @@ class BackendProcessor
 
       if (await fs_promises.stat(this.file_to_watch).catch(() => false)) 
       {
-        sendStatusToRenderer("processing audio file...")
-        const stats = await fs_promises.stat(his.file_to_watch);
+        this.sendStatusToRenderer("processing audio file...")
+        const stats = await fs_promises.stat(this.file_to_watch);
         const file_size = stats.size;
         if (file_size === 0) 
         {
           this.log("Warning: Audio file is empty. Skipping processing.", "main");
-          sendStatusToRenderer("Warning: context audio empty")
+          this.sendStatusToRenderer("Warning: context audio empty")
           continue;
         }
         this.log(`File found: ${this.file_to_watch}. Size: ${file_size} bytes.`, "main");
@@ -242,7 +234,7 @@ class BackendProcessor
         if (currentModifiedTime !== this.prev_modified_time) 
         {
           console.log("File IS MODIFIED!! Transcription started!", "main");
-          sendStatusToRenderer("Transcribing context...")
+          this.sendStatusToRenderer("Transcribing context...")
           this.log(`CONTEXT BEFORE: ${this.context}`, "main");
           this.prev_modified_time = currentModifiedTime; // Update the last modified time after processing
 
@@ -251,11 +243,12 @@ class BackendProcessor
           this.context += `\n${new_transcription}`;
           console.log(`CONTEXT AFTER: ${this.context}`, "main");
           this.log("Transcription updated and added to context.", "main");
-          sendStatusToRenderer("Transcription updated and added to context.")
+          this.sendStatusToRenderer("Transcription updated and added to context.")
           this.is_stop_recording = false;
         }  
         else 
         {
+          this.sendStatusToRenderer(`Ready - Unmute to start questioning!`)
           this.log(`Waiting for ${this.file_to_watch} or stop-recording command`, "main");
         } 
       } // end of if (await fs_promises.stat(this.file_to_watch).catch(() => false) && this.is_stop_recording)
@@ -273,10 +266,10 @@ class BackendProcessor
       //call function to enable microphone recording
       // this.is_mic_recording = true;
       //send recording command to renderer
-      sendStatusToRenderer("Listening....Ask your question")
+      this.sendStatusToRenderer("Listening....Ask your question")
       this.mainWindow.webContents.send('mic-start');
       await this.trigger_mic_recording(this.user_question_file);
-      sendStatusToRenderer("processing ...")
+      this.sendStatusToRenderer("processing ...")
       //check if file is available and if it's not empty
       if (await fs_promises.stat(this.user_question_file).catch(() => false)) 
       {
@@ -293,14 +286,14 @@ class BackendProcessor
         console.log("USER QUESTION: " + this.user_question);
         this.mainWindow.webContents.send('mic-stop');
         this.is_mic_recording = false;
-        sendStatusToRenderer("Thinking...") 
+        this.sendStatusToRenderer("Thinking...") 
         //we have question, context and we can start chat
 
         this.mainWindow.webContents.send('answer-start');
         const answer = await this.chatWithModel(this.context, this.user_question);
         console.log("ANSWER: " + answer);
         this.mainWindow.webContents.send('answer-stop');
-        sendStatusToRenderer("Answering...") 
+        this.sendStatusToRenderer("Answering...") 
         await this.tts.generateSpeech(answer);
         console.log("TTS generated speech");
         await  this.tts.playAudio();

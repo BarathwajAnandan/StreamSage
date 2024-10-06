@@ -71,7 +71,7 @@ function createWindow()
   initializeBackendProcessor();
 
   // Enable the console window for debugging
-  mainWindow.webContents.openDevTools();
+  // mainWindow.webContents.openDevTools();
 }
 
 /**
@@ -184,6 +184,7 @@ ipcMain.on('toggle-recording', (event, isRecording) =>
 
 });
 
+//TODO: USE IT
 ipcMain.on('toggle-voice', (event, isEnabled) => 
 {
   backendProcessor.setVoiceEnabled(isEnabled); // Set voice enabled state in the backend processor

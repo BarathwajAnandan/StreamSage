@@ -3,93 +3,142 @@ const { startRecording, stopRecording } = require('./screenCapture');
 const { startMicrophoneRecording, stopMicrophoneRecording } = require('./micCapture');
 
 // DOM element references
-const elements = {
+const elements = 
+{
   micStatus: document.getElementById('micStatus'),
   toggleMuteBtn: document.getElementById('toggleMute'),
   toggleRecordingBtn: document.getElementById('toggleRecording'),
   statusArea: document.getElementById('statusArea'),
   recordingStatus: document.getElementById('recordingStatus'),
-  levelMeter: document.getElementById('levelMeter'),
   output: document.getElementById('output'),
   questionStatus: document.getElementById('questionStatus')
 };
 
 // Application state
-const state = {
+const state = 
+{
   isMuted: true,
   isRecording: false,
   screenAudio_filename: 'recorded_audio.webm'
 };
 
-// P5.js related variables
-let mic, fft;
+// Canvas related variables
+let canvas, ctx;
+let animationId;
 let radius = 100; // Base radius for the visualization
 const maxRadius = 350; // Maximum radius for the circle
 const minRadius = 30; // Minimum radius for the circle
 
-// P5.js setup function
-function setup() {
-  createCanvas(300, 300);
-  noFill();
-  mic = new p5.AudioIn();
-  mic.start();
-  fft = new p5.FFT();
-  fft.setInput(mic);
-  frameRate(90);
+// Audio context and analyzer
+let audioContext, analyzer, microphone, dataArray;
+
+// Initialize audio context and analyzer
+function initAudio() 
+{
+  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  analyzer = audioContext.createAnalyser();
+  analyzer.fftSize = 256;
+  dataArray = new Uint8Array(analyzer.frequencyBinCount);
+
+  navigator.mediaDevices.getUserMedia({ audio: true })
+    .then(stream => 
+    {
+      microphone = audioContext.createMediaStreamSource(stream);
+      microphone.connect(analyzer);
+      console.log("Microphone connected successfully");
+    })
+    .catch(err => 
+    {
+      console.error("Error accessing the microphone", err);
+    });
 }
 
-// P5.js draw function
-function draw() {
-  updateVisualization();
+// Initialize Canvas
+function initCanvas() 
+{
+  canvas = document.createElement('canvas');
+  canvas.width = 300;
+  canvas.height = 300;
+  document.body.appendChild(canvas);
+  ctx = canvas.getContext('2d');
 }
 
-// Update the audio visualization
-function updateVisualization() {
-  if (state.isMuted) {
-    background(0);
+// Animation function
+function animate() 
+{
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  if (state.isMuted) 
+  {
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     radius = minRadius;
-  } else {
-    background(0, 10);
+  } 
+  else 
+  {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    analyzer.getByteFrequencyData(dataArray);
+    let sum = dataArray.reduce((a, b) => a + b, 0);
+    let average = sum / dataArray.length;
+    
+    let targetRadius = map(average, 0, 255, minRadius, maxRadius);
+    radius += (targetRadius - radius) * 0.1;
   }
 
-  let amp = fft.getEnergy("mid");
-  let targetRadius = state.isMuted ? minRadius : map(amp, 0, 200, minRadius, maxRadius);
-  radius += (targetRadius - radius) * 0.1;
-
-  translate(window.innerWidth * 0.425, window.innerHeight * 0.3);
+  ctx.save();
+  ctx.translate(canvas.width / 2, canvas.height / 2);
   
   // Draw filled circle
-  fill(255);
-  noStroke();
-  ellipse(0, 0, radius, radius);
+  ctx.fillStyle = 'white';
+  ctx.beginPath();
+  ctx.arc(0, 0, radius / 2, 0, Math.PI * 2);
+  ctx.fill();
 
   // Draw outer circle
-  stroke(255);
-  strokeWeight(12);
-  noFill();
-  ellipse(0, 0, radius, radius);
+  ctx.strokeStyle = 'white';
+  ctx.lineWidth = 12;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius / 2, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.restore();
+
+  animationId = requestAnimationFrame(animate);
+}
+
+// Utility function to map a value from one range to another
+function map(value, start1, stop1, start2, stop2) 
+{
+  return start2 + (stop2 - start2) * ((value - start1) / (stop1 - start1));
+}
+
+// Initialize the visualization
+function initVisualization() 
+{
+  initAudio();
+  initCanvas();
+  animate();
 }
 
 // Mouse click event to toggle mute
-function mousePressed() {
-  let d = dist(mouseX, mouseY, window.innerWidth * 0.425, window.innerHeight * 0.35);
-  if (d < radius && !state.isRecording) {
+function handleCanvasClick(event) 
+{
+  let rect = canvas.getBoundingClientRect();
+  let x = event.clientX - rect.left;
+  let y = event.clientY - rect.top;
+  let d = Math.sqrt(Math.pow(x - canvas.width / 2, 2) + Math.pow(y - canvas.height / 2, 2));
+  
+  if (d < radius / 2 && !state.isRecording) 
+  {
     toggleMute();
   }
 }
 
-// Initialize P5.js
-function startP5() {
-  new p5();
-}
-
-// Resize canvas when the window is resized
-function windowResized() {
-  resizeCanvas(window.innerWidth, window.innerHeight);
-}
-
 // Update UI elements based on recording state
-function updateRecordingUI() {
+function updateRecordingUI() 
+{
   elements.recordingStatus.textContent = state.isRecording ? 'Recording...' : 'Ready to record';
   elements.toggleMuteBtn.disabled = state.isRecording;
   elements.toggleMuteBtn.style.opacity = state.isRecording ? 0.5 : 1;
@@ -99,7 +148,8 @@ function updateRecordingUI() {
 }
 
 // Update UI elements based on mute state
-function updateMuteUI() {
+function updateMuteUI() 
+{
   elements.micStatus.textContent = `Mic: ${state.isMuted ? 'Muted' : 'Unmuted'}`;
   elements.micStatus.style.color = state.isMuted ? 'red' : 'green';
   elements.toggleMuteBtn.className = state.isMuted ? 'fas fa-microphone-slash' : 'fas fa-microphone';
@@ -107,30 +157,42 @@ function updateMuteUI() {
 }
 
 // Toggle mute state
-function toggleMute() {
+function toggleMute() 
+{
   state.isMuted = !state.isMuted;
-  if (!state.isRecording) {
+  if (!state.isRecording) 
+  {
     ipcRenderer.send('toggle-mute', state.isMuted);
     updateMuteUI();
   }
 }
 
 // Toggle recording state
-async function toggleRecording() {
-  if (state.isRecording) {
+async function toggleRecording() 
+{
+  if (state.isRecording) 
+  {
     console.log("Stopping recording...");
-    if (stopRecording()) {
+    if (stopRecording()) 
+    {
       state.isRecording = false;
       ipcRenderer.send('toggle-recording', false);
-    } else {
+    } 
+    else 
+    {
       console.error('Failed to stop recording');
     }
-  } else {
+  } 
+  else 
+  {
     console.log("Starting recording...");
-    if (await startRecording(state.screenAudio_filename)) {
+    if (await startRecording(state.screenAudio_filename)) 
+    {
       state.isRecording = true;
       ipcRenderer.send('toggle-recording', true);
-    } else {
+    } 
+    else 
+    {
       console.error('Failed to start recording');
     }
   }
@@ -138,25 +200,44 @@ async function toggleRecording() {
 }
 
 // Update status text with animation
-function updateStatus(message) {
+function updateStatus(message) 
+{
   elements.statusArea.textContent = message;
   elements.statusArea.style.opacity = 0;
   elements.statusArea.style.transition = 'opacity 0.5s';
-  setTimeout(() => {
+  setTimeout(() => 
+  {
     elements.statusArea.style.opacity = 1;
   }, 50);
 }
 
-// Event listeners
+ipcRenderer.on('update-status', (event, status) => 
+{
+  updateStatus(status);
+});
+
+// Event listeners for keyboard shortcuts
+document.addEventListener('keydown', (event) => 
+{
+  if (event.key === 'm' || event.key === 'M') // Toggle mute with 'M' key
+  {
+    toggleMute();
+  }
+  else if (event.key === 'r' || event.key === 'R') // Toggle recording with 'R' key
+  {
+    toggleRecording();
+  }
+});
+
+// Existing event listeners for buttons
 elements.toggleMuteBtn.addEventListener('click', toggleMute);
 elements.toggleRecordingBtn.addEventListener('click', toggleRecording);
 
-// ipcRenderer.on('toggle-mute-changed', (event, isMuted) => {
-//   state.isMuted = isMuted;
-//   updateMuteUI();
-// });
-
-// Initialize UI
+// Initialize UI and visualization
 updateMuteUI();
 updateRecordingUI();
 updateStatus('Idle');
+initVisualization();
+
+// Add click event listener to the canvas
+canvas.addEventListener('click', handleCanvasClick);
