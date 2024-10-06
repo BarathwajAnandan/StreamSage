@@ -1,3 +1,4 @@
+// Import necessary modules from Electron and other libraries
 const { app, BrowserWindow, ipcMain, desktopCapturer } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -6,49 +7,70 @@ const dotenv = require('dotenv');
 // Load environment variables from .env file
 dotenv.config();
 
+// Declare variables for the main window and backend processor
 let mainWindow;
 let backendProcessor;
-const screenAudio_filename = 'recorded_audio.webm';
+const screenAudio_filename = 'recorded_audio.webm'; // Define the audio file name
 
+// Import the BackendProcessor class from the main_backend module
 const BackendProcessor = require('./main_backend');
 
-function initializeBackendProcessor() {
+// Function to initialize the backend processor
+function initializeBackendProcessor() 
+{
+  // Create a new instance of BackendProcessor and run it
   backendProcessor = new BackendProcessor(mainWindow);
-  backendProcessor.run().catch(console.error);
+  backendProcessor.run().catch(console.error); // Catch and log any errors
 }
 
-async function listDevices() {
+// Function to list available media devices
+async function listDevices() 
+{
+  // Get the list of media devices
   const devices = await navigator.mediaDevices.enumerateDevices();
-  devices.forEach(device => {
+  // Log each device's kind, label, and ID
+  devices.forEach(device => 
+  {
     console.log(`${device.kind}: ${device.label} id = ${device.deviceId}`);
   });
 }
+
 /**
  * Creates and configures the main application window.
  */
-function createWindow() {
-  mainWindow = new BrowserWindow({
+function createWindow() 
+{
+  // Create a new BrowserWindow instance with specified dimensions and settings
+  mainWindow = new BrowserWindow(
+  {
     width: 400,
     height: 400,
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-      devTools: true
+    webPreferences: 
+    {
+      nodeIntegration: true, // Enable Node.js integration
+      contextIsolation: false, // Disable context isolation
+      devTools: true // Enable developer tools
     },
   });
 
+  // Load the main HTML file into the window
   mainWindow.loadFile('src/index.html');
+  // Set the window's position
   mainWindow.setPosition(mainWindow.getPosition()[0], 40);
+  // Remove the window menu
   mainWindow.setMenu(null);
 
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-    app.quit();
+  // Event listener for when the window is closed
+  mainWindow.on('closed', () => 
+  {
+    mainWindow = null; // Clear the reference to the main window
+    app.quit(); // Quit the application
   });
 
+  // Initialize the backend processor
   initializeBackendProcessor();
 
-  // Enable the console window
+  // Enable the console window for debugging
   mainWindow.webContents.openDevTools();
 }
 
@@ -57,25 +79,37 @@ function createWindow() {
  * @param {ArrayBuffer} arrayBuffer - The audio data.
  * @param {string} fileName - The name of the file to save.
  */
-function handleSaveAudio(arrayBuffer, fileName) {
-  if (!(arrayBuffer instanceof ArrayBuffer)) {
+function handleSaveAudio(arrayBuffer, fileName) 
+{
+  // Check if the received data is an ArrayBuffer
+  if (!(arrayBuffer instanceof ArrayBuffer)) 
+  {
     console.error('Received data is not an ArrayBuffer:', arrayBuffer);
-    return;
+    return; // Exit the function if the data is invalid
   }
 
+  // Construct the file path for saving the audio
   const filePath = path.join(__dirname, '..', 'StreamSage', fileName);
-  const buffer = Buffer.from(arrayBuffer);
+  const buffer = Buffer.from(arrayBuffer); // Convert ArrayBuffer to Buffer
 
-  fs.writeFile(filePath, buffer, (err) => {
-    if (err) {
-      console.error('Failed to save audio:', err);
-    } else {
-      console.log('Audio saved successfully. File size:', buffer.length);
-      if (buffer.length > 0) {
-        console.log('Processing audio');
-        backendProcessor.processAudio();
-      } else {
-        console.log('Audio file is empty, not processing');
+  // Write the buffer to the specified file
+  fs.writeFile(filePath, buffer, (err) => 
+  {
+    if (err) 
+    {
+      console.error('Failed to save audio:', err); // Log error if saving fails
+    } 
+    else 
+    {
+      console.log('Audio saved successfully. File size:', buffer.length); // Log success message
+      if (buffer.length > 0) 
+      {
+        console.log('Processing audio after recording!'); // Log that audio is being processed
+        // backendProcessor.processAudio(); // Uncomment to process audio
+      } 
+      else 
+      {
+        console.log('Audio file is empty, not processing'); // Log if the audio file is empty
       }
     }
   });
@@ -85,97 +119,131 @@ function handleSaveAudio(arrayBuffer, fileName) {
  * Handles saving and processing a user question.
  * @param {ArrayBuffer} arrayBuffer - The question audio data.
  */
-function handleSaveQuestion(arrayBuffer) {
-  if (!(arrayBuffer instanceof ArrayBuffer)) {
+function handleSaveQuestion(arrayBuffer) 
+{
+  // Check if the received data is an ArrayBuffer
+  if (!(arrayBuffer instanceof ArrayBuffer)) 
+  {
     console.error('Received data is not an ArrayBuffer:', arrayBuffer);
-    return;
+    return; // Exit the function if the data is invalid
   }
 
+  // Construct the file path for saving the user question audio
   const filePath = path.join(__dirname, '..', 'StreamSage', 'user_question.wav');
-  const buffer = Buffer.from(arrayBuffer);
+  const buffer = Buffer.from(arrayBuffer); // Convert ArrayBuffer to Buffer
 
-  fs.writeFile(filePath, buffer, (err) => {
-    if (err) {
-      console.error('Failed to save audio:', err);
-    } else {
-      console.log('Audio saved successfully. File size:', buffer.length);
-      if (buffer.length > 0) {
-        console.log('Processing question');
-        backendProcessor.processQuestion();
-      } else {
-        console.log('Audio file is empty, not processing');
+  // Write the buffer to the specified file
+  fs.writeFile(filePath, buffer, (err) => 
+  {
+    if (err) 
+    {
+      console.error('Failed to save audio:', err); // Log error if saving fails
+    } 
+    else 
+    {
+      console.log('Audio saved successfully. File size:', buffer.length); // Log success message
+      if (buffer.length > 0) 
+      {
+        console.log('Processing question'); // Log that the question is being processed
+        backendProcessor.processQuestion(); // Call to process the user question
+      } 
+      else 
+      {
+        console.log('Audio file is empty, not processing'); // Log if the audio file is empty
       }
     }
   });
 }
 
 // Application event listeners
-app.whenReady().then(createWindow);
+app.whenReady().then(createWindow); // Create the window when the app is ready
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
+app.on('window-all-closed', () => 
+{
+  if (process.platform !== 'darwin') app.quit(); // Quit the app if not on macOS
 });
 
-app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) createWindow();
+app.on('activate', () => 
+{
+  if (BrowserWindow.getAllWindows().length === 0) createWindow(); // Recreate the window if there are none
 });
 
 // IPC event listeners
-ipcMain.on('toggle-mute', (event, shouldMute) => {
-  backendProcessor.setMute(shouldMute);
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send('mute-state-changed', shouldMute);
-  }
+ipcMain.on('toggle-mute', (event, isMuted) => 
+{
+  backendProcessor.setMute(isMuted); // Set mute state in the backend processor
+  // if (mainWindow && !mainWindow.isDestroyed()) 
+  // {
+  //   mainWindow.webContents.send('toggle-mute-changed', isMuted); // Notify the main window of mute state change
+  // }
 });
 
-ipcMain.on('toggle-mic-recording', () => {
-  backendProcessor.toggleMicRecording();
+ipcMain.on('toggle-recording', (event, isRecording) => 
+{
+  backendProcessor.setRecording(isRecording); // Toggle microphone recording state
+
 });
 
-ipcMain.on('toggle-recording', () => {
-  // backendProcessor.toggleRecording();
+ipcMain.on('toggle-voice', (event, isEnabled) => 
+{
+  backendProcessor.setVoiceEnabled(isEnabled); // Set voice enabled state in the backend processor
 });
 
-ipcMain.on('toggle-voice', (event, isEnabled) => {
-  backendProcessor.setVoiceEnabled(isEnabled);
+// Handle request to get media sources
+ipcMain.handle('get-sources', async () => 
+{
+  const sources = await desktopCapturer.getSources({ types: ['window', 'screen'] }); // Get media sources
+  return sources.map(source => 
+  {
+    // Map the sources to return their ID, name, and thumbnail
+    return {
+      id: source.id,
+      name: source.name,
+      thumbnail: source.thumbnail.toDataURL()
+    };
+  });
 });
 
-ipcMain.handle('get-sources', async () => {
-  const sources = await desktopCapturer.getSources({ types: ['window', 'screen'] });
-  return sources.map(source => ({
-    id: source.id,
-    name: source.name,
-    thumbnail: source.thumbnail.toDataURL()
-  }));
+// Handle save-audio event
+ipcMain.on('save-audio', (event, arrayBuffer, fileName) => 
+{
+  console.log('Received save-audio event'); // Log the event
+  handleSaveAudio(arrayBuffer, fileName); // Call the function to save audio
 });
 
-ipcMain.on('save-audio', (event, arrayBuffer, fileName) => {
-  console.log('Received save-audio event');
-  handleSaveAudio(arrayBuffer, fileName);
+// Handle save-question event
+ipcMain.on('save-question', (event, arrayBuffer) => 
+{
+  console.log('Received save-question event'); // Log the event
+  handleSaveQuestion(arrayBuffer); // Call the function to save the question
 });
 
-ipcMain.on('save-question', (event, arrayBuffer) => {
-  console.log('Received save-question event');
-  handleSaveQuestion(arrayBuffer);
-});
+// // Handle start-recording event
+// ipcMain.on('start-recording', () => 
+// {
+//   backendProcessor.setRecording(true); // Toggle the recording state
+// });
 
-ipcMain.on('start-recording', () => {
-  backendProcessor.toggleRecording();
-});
-
-ipcMain.on('stop-recording', () => {
-  backendProcessor.stopRecording();
-});
+// // Handle stop-recording event
+// ipcMain.on('stop-recording', () => 
+// {
+//   backendProcessor.setRecording(false); // Stop the recording
+// });
 
 // Clean up on app quit
-const filePathToDelete = path.join(__dirname, `../StreamSage/${screenAudio_filename}`);
+const filePathToDelete = path.join(__dirname, `../StreamSage/${screenAudio_filename}`); // Define the file path to delete
 
-app.on('before-quit', () => {
-  fs.unlink(filePathToDelete, (err) => {
-    if (err) {
-      console.error('Error deleting file:', err);
-    } else {
-      console.log('File deleted successfully.');
+app.on('before-quit', () => 
+{
+  fs.unlink(filePathToDelete, (err) => 
+  {
+    if (err) 
+    {
+      console.error('Error deleting file:', err); // Log error if file deletion fails
+    } 
+    else 
+    {
+      console.log('File deleted successfully.'); // Log success message
     }
   });
 });

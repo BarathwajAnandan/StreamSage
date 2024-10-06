@@ -132,9 +132,10 @@ class MacTTS extends SpeechGenerator {
   constructor() {
     super();
     this.process = null;
+    this.defaultFilename = "audio.aiff"; // Default filename
   }
 
-  async generateSpeech(text, filename = "audio.aiff") {
+  async generateSpeech(text, filename = this.defaultFilename) {
     return new Promise((resolve, reject) => {
       exec(`say -o ${filename} "${text}"`, (error) => {
         if (error) {
@@ -148,7 +149,7 @@ class MacTTS extends SpeechGenerator {
     });
   }
 
-  async playAudio(filename) {
+  async playAudio(filename = this.defaultFilename) {
     return new Promise((resolve, reject) => {
       this.process = exec(`afplay ${filename}`, (error) => {
         if (error) {

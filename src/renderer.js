@@ -121,7 +121,7 @@ async function toggleRecording() {
     console.log("Stopping recording...");
     if (stopRecording()) {
       state.isRecording = false;
-      ipcRenderer.send('stop-recording');
+      ipcRenderer.send('toggle-recording', false);
     } else {
       console.error('Failed to stop recording');
     }
@@ -129,7 +129,7 @@ async function toggleRecording() {
     console.log("Starting recording...");
     if (await startRecording(state.screenAudio_filename)) {
       state.isRecording = true;
-      // ipcRenderer.send('start-recording');
+      ipcRenderer.send('toggle-recording', true);
     } else {
       console.error('Failed to start recording');
     }
@@ -151,16 +151,10 @@ function updateStatus(message) {
 elements.toggleMuteBtn.addEventListener('click', toggleMute);
 elements.toggleRecordingBtn.addEventListener('click', toggleRecording);
 
-// IPC listeners
-ipcRenderer.on('python-output', (event, data) => {
-  // Handle the received data, e.g., update the UI
-  console.log(data);
-});
-
-ipcRenderer.on('mute-state-changed', (event, muted) => {
-  state.isMuted = muted;
-  updateMuteUI();
-});
+// ipcRenderer.on('toggle-mute-changed', (event, isMuted) => {
+//   state.isMuted = isMuted;
+//   updateMuteUI();
+// });
 
 // Initialize UI
 updateMuteUI();
