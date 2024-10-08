@@ -10,4 +10,6 @@ package-lock.json
 **/*.webm
 **/*.pyc/
 StreamSage/__pycache__/*
-
+*wav
+package-lock.json
+src/*.code-workspace

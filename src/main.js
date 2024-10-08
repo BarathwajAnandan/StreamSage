@@ -3,6 +3,7 @@ const { app, BrowserWindow, ipcMain, desktopCapturer } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const dotenv = require('dotenv');
+const WebSocket = require('ws');
 
 // Load environment variables from .env file
 dotenv.config();
@@ -156,7 +157,43 @@ function handleSaveQuestion(arrayBuffer)
 }
 
 // Application event listeners
-app.whenReady().then(createWindow); // Create the window when the app is ready
+app.whenReady().then(() => 
+{
+    createWindow(); // Create the window when the app is ready
+    // Initialize WebSocket server on port 3000
+    wss = new WebSocket.Server({ port: 3000 }, () => 
+    {
+        console.log('WebSocket Server is listening on ws://localhost:3000');
+    });
+
+    wss.on('connection', (ws) => 
+    {
+        console.log('Chrome extension connected via WebSocket');
+
+        ws.on('message', (message) => 
+        {
+            console.log('Received from Chrome extension:', message);
+            // Handle incoming messages from the extension if needed
+        });
+
+        ws.on('close', () => 
+        {
+            console.log('Chrome extension disconnected');
+        }); 
+    });
+  
+    // Handle IPC from renderer to send commands via WebSocket
+    ipcMain.on('send-toggle', (event, arg) => 
+    {
+        console.log('Received toggle command from renderer');
+        sendToggleCommand();
+    });
+  
+    app.on('activate', function () 
+    {
+        if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    });
+});
 
 app.on('window-all-closed', () => 
 {
@@ -172,6 +209,7 @@ app.on('activate', () =>
 ipcMain.on('toggle-mute', (event, isMuted) => 
 {
   backendProcessor.setMute(isMuted); // Set mute state in the backend processor
+  sendToggleCommand();
   // if (mainWindow && !mainWindow.isDestroyed()) 
   // {
   //   mainWindow.webContents.send('toggle-mute-changed', isMuted); // Notify the main window of mute state change
@@ -248,3 +286,25 @@ app.on('before-quit', () =>
     }
   });
 });
+
+
+// Function to send toggle command to all connected clients
+function sendToggleCommand() 
+{
+  console.log('Sending toggle command to extension');
+  const message = JSON.stringify
+  ({ action: 'toggleMedia' });
+  wss.clients.forEach(client => 
+  {
+      if (client.readyState === WebSocket.OPEN) 
+      {
+        client.send(message);
+        console.log('Sent toggleMedia command to extension');
+      }
+      else
+      {
+        console.log('Client is not open');
+      }
+  }
+);
+}

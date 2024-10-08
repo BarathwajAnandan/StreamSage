@@ -139,7 +139,7 @@ function handleCanvasClick(event)
 // Update UI elements based on recording state
 function updateRecordingUI() 
 {
-  elements.recordingStatus.textContent = state.isRecording ? 'Recording...' : 'Ready to record';
+  // elements.recordingStatus.textContent = state.isRecording ? 'Recording...' : 'Ready to record';
   elements.toggleMuteBtn.disabled = state.isRecording;
   elements.toggleMuteBtn.style.opacity = state.isRecording ? 0.5 : 1;
   elements.toggleMuteBtn.style.transform = state.isRecording ? 'scale(0.9)' : 'scale(1)';
