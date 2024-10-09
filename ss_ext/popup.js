@@ -51,15 +51,27 @@ document.getElementById('pauseButton').addEventListener('click', function()
 document.getElementById('connectButton').addEventListener('click', function() 
 {
     console.log('Connect button clicked');
+    const statusMessage = document.getElementById('statusMessage');
+    statusMessage.textContent = 'Connecting...';
+
     chrome.runtime.sendMessage({ action: 'connectWebSocket' }, function(response) 
     {
         if (chrome.runtime.lastError) 
         {
             console.error('Error sending connectWebSocket message:', chrome.runtime.lastError.message);
+            statusMessage.textContent = 'Connection failed last Error';
         }
         else 
         {
             console.log('connectWebSocket message sent successfully');
+            if (response.status === 'Connected') 
+            {
+                statusMessage.textContent = 'Connected';
+            }
+            else 
+            {
+                statusMessage.textContent = 'Connection failed';
+            }
         }
     });
 });
