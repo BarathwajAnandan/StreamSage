@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Media Controller Extension",
+  "version": "1.0",
+  "description": "Play, pause media on the current tab and connect to a WebSocket server.",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Media Controller"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}

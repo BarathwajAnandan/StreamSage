@@ -1,0 +1,1 @@
+// Currently not used. Functions are injected directly from popup.js and background.js
