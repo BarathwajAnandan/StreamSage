@@ -1,5 +1,5 @@
 // Import necessary modules from Electron and other libraries
-const { app, BrowserWindow, ipcMain, desktopCapturer } = require('electron');
+const { app, BrowserWindow, ipcMain, desktopCapturer, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const dotenv = require('dotenv');
@@ -41,11 +41,17 @@ async function listDevices()
  */
 function createWindow() 
 {
+  // const primaryDisplay = screen.getPrimaryDisplay();
+
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
   // Create a new BrowserWindow instance with specified dimensions and settings
   mainWindow = new BrowserWindow(
   {
-    width: 400,
-    height: 400,
+    width: 380,
+    height: 500,
+    alwaysOnTop: true, // This makes the window always on top
+    x: width - 200, // Position from the right
+    y: 0, // Position from the top
     webPreferences: 
     {
       nodeIntegration: true, // Enable Node.js integration
@@ -161,14 +167,30 @@ app.whenReady().then(() =>
 {
     createWindow(); // Create the window when the app is ready
     // Initialize WebSocket server on port 3000
+
+    
     wss = new WebSocket.Server({ port: 3000 }, () => 
     {
         console.log('WebSocket Server is listening on ws://localhost:3000');
     });
 
+    let connectionCount = 0; // Variable to track the number of connections
+
     wss.on('connection', (ws) => 
     {
         console.log('Chrome extension connected via WebSocket');
+        connectionCount++; // Increment the connection count
+        console.log('Number of previous connections:', connectionCount - 1);
+
+        // Kill all previous connections
+        wss.clients.forEach(client => 
+        {
+            if (client !== ws && client.readyState === WebSocket.OPEN) 
+            {
+                client.close(); // Close the previous connection
+                console.log('Closed a previous connection');
+            }
+        });
 
         ws.on('message', (message) => 
         {
@@ -179,6 +201,7 @@ app.whenReady().then(() =>
         ws.on('close', () => 
         {
             console.log('Chrome extension disconnected');
+            connectionCount--; // Decrement the connection count on disconnect
         }); 
     });
   
@@ -209,7 +232,7 @@ app.on('activate', () =>
 ipcMain.on('toggle-mute', (event, isMuted) => 
 {
   backendProcessor.setMute(isMuted); // Set mute state in the backend processor
-  sendToggleCommand();
+  sendToggleCommand(isMuted);
   // if (mainWindow && !mainWindow.isDestroyed()) 
   // {
   //   mainWindow.webContents.send('toggle-mute-changed', isMuted); // Notify the main window of mute state change
@@ -289,11 +312,14 @@ app.on('before-quit', () =>
 
 
 // Function to send toggle command to all connected clients
-function sendToggleCommand() 
+function sendToggleCommand(isMuted) 
 {
-  console.log('Sending toggle command to extension');
-  const message = JSON.stringify
-  ({ action: 'toggleMedia' });
+    console.log('Sending toggle command to extension');
+    const message = JSON.stringify
+    ({
+        action: 'toggleMedia',
+        isMuted: isMuted
+    });
   wss.clients.forEach(client => 
   {
       if (client.readyState === WebSocket.OPEN) 
