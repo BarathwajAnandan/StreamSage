@@ -7,6 +7,8 @@
         {
             font-family: Arial, sans-serif;
             padding: 10px;
+            background-color: #000000;
+            color: #ffffff;
         }
 
         button
@@ -15,6 +17,18 @@
             padding: 10px;
             margin: 5px 0;
             font-size: 16px;
+            background-color: #ffffff;
+            color: #000000;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        button:hover
+        {
+            background-color: #e0e0e0;
+            transform: scale(1.05);
         }
 
         #statusMessage
@@ -22,13 +36,14 @@
             margin-top: 10px;
             font-weight: bold;
             text-align: center;
+            color: #ffffff;
         }
     </style>
 </head>
 <body>
     <button id="playButton">Play</button>
     <button id="pauseButton">Pause</button>
-    <button id="connectButton">Connect</button>
+    <button id="connectButton">EnableSmart Mute</button>
     <div id="statusMessage"></div>
 
     <script src="popup.js"></script>

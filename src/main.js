@@ -1,5 +1,5 @@
 // Import necessary modules from Electron and other libraries
-const { app, BrowserWindow, ipcMain, desktopCapturer, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, desktopCapturer, screen, Tray, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const dotenv = require('dotenv');
@@ -36,6 +36,29 @@ async function listDevices()
   });
 }
 
+function createTray() {
+  tray = new Tray(path.join(__dirname, 'icon16.png')); // Replace with your icon path
+  const contextMenu = Menu.buildFromTemplate([
+    { 
+      label: 'Help', 
+      click: () => {
+        
+      }
+    },
+    { 
+      label: 'Quit', 
+      click: () => {
+        app.quit();
+      }
+    }
+  ]);
+  tray.setToolTip('Your App Name');
+  tray.setContextMenu(contextMenu);
+
+  tray.on('click', () => {
+    mainWindow.isVisible() ? mainWindow.hide() : mainWindow.show();
+  });
+}
 /**
  * Creates and configures the main application window.
  */
@@ -58,6 +81,7 @@ function createWindow()
       contextIsolation: false, // Disable context isolation
       devTools: true // Enable developer tools
     },
+    show: false,
   });
 
   // Load the main HTML file into the window
@@ -68,10 +92,17 @@ function createWindow()
   mainWindow.setMenu(null);
 
   // Event listener for when the window is closed
-  mainWindow.on('closed', () => 
-  {
-    mainWindow = null; // Clear the reference to the main window
-    app.quit(); // Quit the application
+  // mainWindow.on('closed', () => 
+  // {
+  //   mainWindow = null; // Clear the reference to the main window
+  //   app.quit(); // Quit the application
+  // });
+  mainWindow.on('close', (event) => {
+    if (!app.isQuitting) {
+      event.preventDefault();
+      mainWindow.hide();
+    }
+    return false;
   });
 
   // Initialize the backend processor
@@ -166,6 +197,8 @@ function handleSaveQuestion(arrayBuffer)
 app.whenReady().then(() => 
 {
     createWindow(); // Create the window when the app is ready
+    createTray(); // Add this line
+
     // Initialize WebSocket server on port 3000
 
     
@@ -297,6 +330,8 @@ const filePathToDelete = path.join(__dirname, `../StreamSage/${screenAudio_filen
 
 app.on('before-quit', () => 
 {
+  app.isQuitting = true;
+
   fs.unlink(filePathToDelete, (err) => 
   {
     if (err) 

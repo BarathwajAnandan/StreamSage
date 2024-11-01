@@ -1,5 +1,5 @@
 {
-  "name": "streamsage",
+  "name": "StreamSage",
   "version": "1.0.0",
   "description": "StreamSage AI Assistant",
   "main": "src/main.js",
@@ -24,6 +24,7 @@
     "axios": "^1.7.7",
     "dotenv": "^10.0.0",
     "groq-sdk": "^0.7.0",
+    "reveal.js": "^5.1.0",
     "ws": "^8.18.0"
   },
   "build": {

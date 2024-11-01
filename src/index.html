@@ -6,10 +6,11 @@
     <style>
         body { 
             font-family: 'Bangers'; /* Use the Spider-Man style font */
-            padding: 20px; 
+            padding: 10px; 
             background-color: black; /* Set the background color to black */
             color: white; /* Set text color to white for better visibility */
         }
+        
         button { 
             font-family: 'Bangers'; /* Apply Spider-Man style font to buttons */
             margin: 10px 0; 
@@ -39,6 +40,9 @@
             background-color: #222; /* Dark background for output */
             color: white; /* Text color for output */
         }
+        #recordingStatus {
+        font-size: 14px; /* Set font size for recording status */
+    }
         #statusArea {
             margin-top: 10px;
             font-family: 'Courier New', monospace;
@@ -50,13 +54,12 @@
     </style>
 </head>
 <body>
-    <div id="micStatus">Mic: Unmuted</div>
-    <button id="toggleMute"></button>
-    <button id="toggleRecording"></button>
+    <div id="micStatus">Mic: Unmuted</div> 
     <div id="recordingStatus">Press (M) to mute, (R) to record</div>
-    <div id="statusArea">Idle</div>
+    <button id="toggleMute"></button> 
+    <button id="toggleRecording"></button> 
+    <div id="statusArea">Idle</div> 
     <script src="renderer.js"></script>
-    
     <!-- Subtle status area below the mic animation -->
 
 </body>

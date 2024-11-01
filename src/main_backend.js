@@ -8,6 +8,7 @@ const fs_promises = require('fs').promises;
 const path = require('path');
 const { spawn } = require('child_process');
 const dotenv = require('dotenv');
+const { exec } = require('child_process');
 
 
 const fs = require("fs");
@@ -123,11 +124,11 @@ class BackendProcessor
         1. Analyze the provided transcription carefully, keeping in mind it's from a live video the user is watching right now.
         2. Consider the real-time nature of the content and any potential gaps or ambiguities in the transcription.
         3. Address the user's confusion directly, providing a clear and helpful explanation based on the context.
-        4. If the question doesn't make sense, is out of context, or is irrelevant to the provided transcription, or if the input is not meaningful or mostly silent, do not respond.
-
+        
         Do not talk about the video or the user's question. Just provide a response to the user's question briefly.
-      `;
-
+        `;
+        // 4. If the question doesn't make sense, is out of context, or is irrelevant to the provided transcription, or if the input is not meaningful or mostly silent, do not respond.
+        
       const response = await this.chat_client.chat.completions.create({
         model: model,
         messages: [
@@ -263,6 +264,13 @@ class BackendProcessor
         this.log("Muted, skipping processing", "main");
         continue;
       }
+      this.playTingSound();
+      // wait for 0.3 seconds
+      await new Promise(resolve => setTimeout(resolve, 300));
+      //play a ting sound when mic is ready to record.
+
+
+
       //call function to enable microphone recording
       // this.is_mic_recording = true;
       //send recording command to renderer
@@ -304,6 +312,28 @@ class BackendProcessor
     }
   }
 
+  playTingSound() {
+    const audioPath = path.join(__dirname, 'assets', 'beep.mp3');
+    
+    if (process.platform === 'darwin') {
+      // For macOS, use afplay
+      exec(`afplay "${audioPath}"`, (error) => {
+        if (error) {
+          console.error('Error playing sound:', error);
+        }
+      });
+    } else if (process.platform === 'win32') {
+      // For Windows, you might use PowerShell
+      exec(`powershell -c (New-Object Media.SoundPlayer "${audioPath}").PlaySync()`, (error) => {
+        if (error) {
+          console.error('Error playing sound:', error);
+        }
+      });
+    } else {
+      // For Linux, you might use paplay or another command
+      console.log('Sound playback not implemented for this platform');
+    }
+  }
   // Methods to handle commands from main process
   setMute(isMuted) 
   {

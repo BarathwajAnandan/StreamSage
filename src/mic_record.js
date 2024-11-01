@@ -14,7 +14,7 @@ function recordAudioWithSox(outputFile, sampleRate = 16000, device = 1)
         let cmd;
         if (process.platform === 'darwin')
         {
-            cmd = `sox -d ${outputFile} rate ${sampleRate} silence 1 0.1 3% 1 3.0 3%`;
+            cmd = `sox -d ${outputFile} rate ${sampleRate} silence 1 0.1 3% 1 2.0 3%`;
         }
         else if (process.platform === 'win32')
         {
