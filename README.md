@@ -18,6 +18,11 @@ StreamSage is an AI-powered learning companion that helps you better understand 
 - **Linux**: Work in progress (WIP). Contributions welcome!
 
 ## Prerequisites
+
+Prebuild DMG: https://github.com/BarathwajAnandan/StreamSage/releases/download/v0.1.0/StreamSage-0.1.0.dmg
+- Since it is not signed, 
+
+For development:
 Before you begin, ensure you have met the following requirements:
 
 - **Node.js**: [Download and install Node.js](https://nodejs.org/)
@@ -33,7 +38,7 @@ Before you begin, ensure you have met the following requirements:
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/yourusername/StreamSage.git
+   git clone https://github.com/BarathwajAnandan/StreamSage.git
    cd StreamSage
    ```
 

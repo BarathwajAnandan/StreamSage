@@ -19,20 +19,57 @@ function recordAudioWithSox(outputFile, sampleRate = 16000, device = 1)
         console.log(msg);
         fs.appendFileSync(logFile, msg + '\n');
     };
-
     logMessage(`MIC ON : outputFile ${outputFile}`);
     const escapedPath = `"${outputFile}"`;
 
     return new Promise((resolve, reject) => 
     {
+        // Get the correct path to sox binary
+        const possiblePaths = app.isPackaged 
+            ? [
+                path.join(process.resourcesPath, 'bin', 'sox'),
+                'sox',
+                '/usr/bin/sox',
+                '/usr/local/bin/sox', 
+                '/opt/homebrew/bin/sox',
+                '/opt/local/bin/sox',
+                '/usr/local/opt/sox/bin/sox'
+            ]
+            : [
+                'sox',
+                '/usr/bin/sox',
+                '/usr/local/bin/sox', 
+                '/opt/homebrew/bin/sox',
+                '/opt/local/bin/sox',
+                '/usr/local/opt/sox/bin/sox'
+            ];
+        
+        let soxPath = possiblePaths.find(testPath => {
+            try {
+                return fs.existsSync(testPath);
+            } catch (err) {
+                return false;
+            }
+        });
+
+        if (!soxPath)
+        {
+            const errMsg = 'Sox binary not found in any expected locations';
+            logMessage(errMsg);
+            reject(new Error(errMsg));
+            return;
+        }
+
+        logMessage(`Found sox binary at: ${soxPath}`);
+            
         let cmd;
         if (process.platform === 'darwin')
         {
-            cmd = `/opt/homebrew/bin/sox -d ${escapedPath} rate ${sampleRate} silence 1 0.1 1% 1 2.0 1%`;
+            cmd = `"${soxPath}" -d ${escapedPath} rate ${sampleRate} silence 1 0.1 1% 1 2.0 1%`;
         }
         else if (process.platform === 'win32')
         {
-            cmd = `/opt/homebrew/bin/sox -t waveaudio ${device} ${escapedPath} rate ${sampleRate} silence 1 0.1 3% 1 3.0 3%`;
+            cmd = `"${soxPath}" -t waveaudio ${device} ${escapedPath} rate ${sampleRate} silence 1 0.1 3% 1 3.0 3%`;
         }
         else
         {
