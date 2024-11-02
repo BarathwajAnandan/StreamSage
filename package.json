@@ -7,32 +7,40 @@
     "start": "electron .",
     "build": "electron-builder",
     "prod": "NODE_ENV=production electron .",
-    "build:mac": "PYTHON_PATH=/opt/anaconda3/envs/quiz/bin/python electron-builder build --mac --x64 --arm64",
+    "build:mac": "electron-builder build --mac --x64 --arm64",
     "build:win": "electron-builder build --win",
     "build:linux": "electron-builder build --linux",
     "clean": "rm -rf dist node_modules",
-    "rebuild": "npm run clean && npm cache clean --force && npm install && npm run patch-dmg-builder && DEBUG=electron-builder PYTHON_PATH=/opt/anaconda3/envs/quiz/bin/python npm run build:mac",
+    "rebuild": "npm run clean && npm cache clean --force && npm install && npm run patch-dmg-builder && DEBUG=electron-builder npm run build:mac",
     "patch-dmg-builder": "node patch-dmg-builder.js"
   },
   "author": "Your Name",
   "license": "ISC",
   "devDependencies": {
     "electron": "^32.1.2",
-    "electron-builder": "^25.0.5"
+    "electron-builder": "^25.1.8"
   },
   "dependencies": {
     "axios": "^1.7.7",
     "dotenv": "^10.0.0",
+    "electron-store": "^8.1.0",
     "groq-sdk": "^0.7.0",
     "reveal.js": "^5.1.0",
     "ws": "^8.18.0"
   },
   "build": {
-    "appId": "com.yourdomain.streamsage",
+    "appId": "com.quizzible.streamsage",
     "productName": "StreamSage",
     "mac": {
-      "category": "public.app-category.productivity"
+      "category": "public.app-category.productivity",
+      "hardenedRuntime": true,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "target": ["dmg"], 
+      "artifactName": "${productName}.${ext}"
     },
+    "icon": "assets/icon.icns",
+
     "files": [
       "src/**/*",
       "StreamSage/**/*",
@@ -45,8 +53,13 @@
         "filter": [
           "**/*"
         ]
+      },
+      {
+        "from": "src/assets/",
+        "to": "assets"
       }
     ],
+    
     "afterPack": "./after-pack.js"
   }
 }

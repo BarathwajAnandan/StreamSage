@@ -1,9 +1,0 @@
-{
-    "name": "com.example.media_controller",
-    "description": "Native host for Media Controller extension",
-    "path": "path/to/nativeHost.js",
-    "type": "stdio",
-    "allowed_origins": [
-        "chrome-extension://YOUR_EXTENSION_ID/"
-    ]
-}

@@ -1,30 +1,61 @@
 const { Groq } = require('groq-sdk');
 
 const { recordAudioWithSox } = require('./mic_record');
-// Initialize the Groq client
-const groq = new Groq();
 const { MacTTS, DeepGram } = require('./tts');
 const fs_promises = require('fs').promises;
 const path = require('path');
 const { spawn } = require('child_process');
-const dotenv = require('dotenv');
+// const dotenv = require('dotenv');
 const { exec } = require('child_process');
+const store = require('./store');
+const { app } = require('electron');
 
 
 const fs = require("fs");
 // Load environment variables from .env file
-dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
+// dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
+function createLogger() 
+{
+    const logFile = path.join(app.getPath('userData'), 'backend.log');
+    
+    return (message, tag = '') => {
+        const timestamp = new Date().toISOString();
+        const logMessage = `[${timestamp}] [${tag || 'BACKEND'}] ${message}\n`;
+        
+        // Log to console
+        console.log(logMessage);
+        
+        // Append to file
+        try {
+            fs.appendFileSync(logFile, logMessage);
+        } catch (error) {
+            console.error('Failed to write to log file:', error);
+        }
+    };
+}
 
-
+const log = createLogger();
 
 class BackendProcessor 
 {
   constructor(mainWindow) 
   {
     this.mainWindow = mainWindow;
-    this.file_to_watch = path.join(__dirname, "../StreamSage/recorded_audio.webm");
-    this.user_question_file = "user_question.wav";
+    // Use app.getPath to get the user data directory and store files there
+    const userDataPath = app.getPath('userData');
+    this.file_to_watch = path.join(userDataPath, "recorded_audio.webm");
+    this.api_key = store.get('groqApiKey');
+            
+    log('Initializing BackendProcessor');
+            
+    if (!this.api_key) 
+    {
+      log('No API key found', 'CONFIG');
+      this.mainWindow.webContents.send('show-api-key-prompt');
+      return;
+  }
+    this.user_question_file = path.join(userDataPath, "user_question.wav");
     this.user_question = "";
     this.voice_enabled = true;
     this.muted = true;
@@ -38,13 +69,26 @@ class BackendProcessor
     this.debug_enabled = true;
     this.prev_modified_time = 0;
 
-    this.transcriber = new Groq({ apiKey: process.env.GROQ_API_KEY });
-    this.chat_client = new Groq({ apiKey: process.env.GROQ_API_KEY2 });
+    this.transcriber = new Groq({ apiKey: this.api_key });
+    this.chat_client = new Groq({ apiKey: this.api_key });
     this.tts = process.platform === 'darwin' ? new MacTTS() : new DeepGram();
+    log(`Initialized with API key, watching file: ${this.file_to_watch}`, 'CONFIG');
+
+    // Set up audio paths properly for both development and production
+    if (app.isPackaged) {
+        // In production, use the resources path
+        this.audioPath = path.join(process.resourcesPath, 'assets', 'beep.mp3');
+    } else {
+        // In development, use the src path
+        this.audioPath = path.join(__dirname, 'assets', 'beep.mp3');
+    }
+    
+    log(`Audio path set to: ${this.audioPath}`, 'CONFIG');
   }
 
   async sendStatusToRenderer(status) 
   {
+    log(`Status update: ${status}`, 'UI');
     this.mainWindow.webContents.send('update-status', status);
   }
   log(message, tag = "") 
@@ -58,33 +102,38 @@ class BackendProcessor
   // Record audio from mic
   async trigger_mic_recording(outputFile, sampleRate = 16000, device = 1) 
   {
-    console.log('Triggering mic recording...');
+    log('Triggering mic recording...', 'AUDIO');
 
     try 
     {
       await recordAudioWithSox(outputFile, sampleRate, device);
-      console.log('Mic recording completed successfully.');
+      log('Mic recording completed successfully', 'AUDIO');
     } 
     catch (error) 
     {
-      console.error('An error occurred during mic recording:', error);
+      log(`Mic recording error: ${error.message}`, 'ERROR');
       throw error; // Re-throw the error to be caught in the main function
     }
   }
 
   async groq_transcribe(filename) 
   {
-    // Create a transcription job
-    const transcription = await this.transcriber.audio.transcriptions.create({
-      file: fs.createReadStream(filename), // Required path to audio file - replace with your audio file!
-      model: "distil-whisper-large-v3-en", // Required model to use for transcription
-      prompt: "Specify context or spelling", // Optional
-      response_format: "json", // Optional
-      language: "en", // Optional
-      temperature: 0.0, // Optional
-    });
-    // Log the transcribed text
-    return transcription;
+    log(`Starting transcription for file: ${filename}`, 'GROQ');
+    try {
+      const transcription = await this.transcriber.audio.transcriptions.create({
+        file: fs.createReadStream(filename), // Required path to audio file - replace with your audio file!
+        model: "distil-whisper-large-v3-en", // Required model to use for transcription
+        prompt: "Specify context or spelling", // Optional
+        response_format: "json", // Optional
+        language: "en", // Optional
+        temperature: 0.0, // Optional
+      });
+      log('Transcription completed successfully', 'GROQ');
+      return transcription;
+    } catch (error) {
+      log(`Transcription error: ${error.message}`, 'ERROR');
+      throw error;
+    }
   }
 
   async transcribeAudio(filename) 
@@ -185,11 +234,12 @@ class BackendProcessor
 
   async run() 
   {
+    log('Starting main processing loop', 'SYSTEM');
     while (this.should_run) 
     {
       await new Promise(resolve => setTimeout(resolve, 500)); // Check every 0.5 seconds
 
-      console.log("is_recording: " + this.is_recording);
+      log(`Recording status: ${this.is_recording}`, 'STATUS');
       // Check if the recording is currently active
         // Log a message indicating that recording is active and we are waiting for a stop command
         this.log("Recording is ON... Waiting for stop command", "main");
@@ -261,7 +311,7 @@ class BackendProcessor
       ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
       if (this.muted)
       {
-        this.log("Muted, skipping processing", "main");
+        log('System muted, skipping processing', 'STATUS');
         continue;
       }
       this.playTingSound();
@@ -304,7 +354,7 @@ class BackendProcessor
         this.sendStatusToRenderer("Answering...") 
         await this.tts.generateSpeech(answer);
         console.log("TTS generated speech");
-        await  this.tts.playAudio();
+        // await  this.tts.playAudio();
         console.log("TTS played audio");
         this.mainWindow.webContents.send('answer-play');
       }
@@ -313,32 +363,34 @@ class BackendProcessor
   }
 
   playTingSound() {
-    const audioPath = path.join(__dirname, 'assets', 'beep.mp3');
+    log('Playing notification sound', 'AUDIO');
+    log(`Using audio file: ${this.audioPath}`, 'AUDIO');
     
-    if (process.platform === 'darwin') {
-      // For macOS, use afplay
-      exec(`afplay "${audioPath}"`, (error) => {
-        if (error) {
-          console.error('Error playing sound:', error);
-        }
-      });
-    } else if (process.platform === 'win32') {
-      // For Windows, you might use PowerShell
-      exec(`powershell -c (New-Object Media.SoundPlayer "${audioPath}").PlaySync()`, (error) => {
-        if (error) {
-          console.error('Error playing sound:', error);
-        }
-      });
-    } else {
-      // For Linux, you might use paplay or another command
-      console.log('Sound playback not implemented for this platform');
+    if (process.platform === 'darwin') 
+    {
+        exec(`/usr/bin/afplay "${this.audioPath}"`, (error) => {
+            if (error) {
+                log(`Error playing sound: ${error.message}`, 'ERROR');
+            } else {
+                log('Sound played successfully', 'AUDIO');
+            }
+        });
+    } else if (process.platform === 'win32') 
+    {
+        exec(`powershell -c (New-Object Media.SoundPlayer "${this.audioPath}").PlaySync()`, (error) => {
+            if (error) {
+                log(`Error playing sound: ${error.message}`, 'ERROR');
+            } else {
+                log('Sound played successfully', 'AUDIO');
+            }
+        });
     }
   }
   // Methods to handle commands from main process
   setMute(isMuted) 
   {
     this.muted = isMuted;
-    this.log(`Microphone ${this.muted ? 'muted' : 'unmuted'}`, "handle_commands");
+    log(`Microphone ${this.muted ? 'muted' : 'unmuted'}`, 'CONTROL');
     // this.updateStatus();
   }
 
@@ -354,7 +406,14 @@ class BackendProcessor
     this.voice_enabled = isEnabled;
     this.log(`Voice output ${this.voice_enabled ? 'enabled' : 'disabled'}`, "handle_commands");
   }
-
+  updateApiKey(newApiKey) 
+  {
+      log('Updating API key', 'CONFIG');
+      store.set('groqApiKey', newApiKey);
+      this.transcriber = new Groq({ apiKey: newApiKey });
+      this.chat_client = new Groq({ apiKey: newApiKey });
+      log('API key updated successfully', 'CONFIG');
+  }
   // processQuestion() 
   // {
   //   this.generate_answer = true;

@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const dotenv = require('dotenv');
 const WebSocket = require('ws');
+const store = require('./store');
 
 // Load environment variables from .env file
 dotenv.config();
@@ -37,7 +38,7 @@ async function listDevices()
 }
 
 function createTray() {
-  tray = new Tray(path.join(__dirname, 'icon16.png')); // Replace with your icon path
+  tray = new Tray(path.join(__dirname, 'S_16.png')); // Replace with your icon path
   const contextMenu = Menu.buildFromTemplate([
     { 
       label: 'Help', 
@@ -79,10 +80,25 @@ function createWindow()
     {
       nodeIntegration: true, // Enable Node.js integration
       contextIsolation: false, // Disable context isolation
+    // Add these permissions
+    webSecurity: true,
+    allowRunningInsecureContent: false,
+    enableRemoteModule: true,
       devTools: true // Enable developer tools
     },
     show: false,
   });
+      // Request microphone permission
+      mainWindow.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
+        const allowedPermissions = ['media', 'microphone'];
+        if (allowedPermissions.includes(permission)) {
+          callback(true);
+        } 
+        else 
+        {
+          callback(false);
+        }
+    });
 
   // Load the main HTML file into the window
   mainWindow.loadFile('src/index.html');
@@ -105,8 +121,11 @@ function createWindow()
     return false;
   });
 
-  // Initialize the backend processor
-  initializeBackendProcessor();
+  // Initialize backend processor if API key exists
+  const apiKey = store.get('groqApiKey');
+  if (apiKey) {
+    initializeBackendProcessor();
+  }
 
   // Enable the console window for debugging
   // mainWindow.webContents.openDevTools();
@@ -126,8 +145,8 @@ function handleSaveAudio(arrayBuffer, fileName)
     return; // Exit the function if the data is invalid
   }
 
-  // Construct the file path for saving the audio
-  const filePath = path.join(__dirname, '..', 'StreamSage', fileName);
+  // Construct the file path for saving the audio using app.getPath('userData')
+  const filePath = path.join(app.getPath('userData'), fileName);
   const buffer = Buffer.from(arrayBuffer); // Convert ArrayBuffer to Buffer
 
   // Write the buffer to the specified file
@@ -166,8 +185,8 @@ function handleSaveQuestion(arrayBuffer)
     return; // Exit the function if the data is invalid
   }
 
-  // Construct the file path for saving the user question audio
-  const filePath = path.join(__dirname, '..', 'StreamSage', 'user_question.wav');
+  // Construct the file path for saving the user question audio using app.getPath('userData')
+  const filePath = path.join(app.getPath('userData'), 'user_question.wav');
   const buffer = Buffer.from(arrayBuffer); // Convert ArrayBuffer to Buffer
 
   // Write the buffer to the specified file
@@ -326,7 +345,7 @@ ipcMain.on('save-question', (event, arrayBuffer) =>
 // });
 
 // Clean up on app quit
-const filePathToDelete = path.join(__dirname, `../StreamSage/${screenAudio_filename}`); // Define the file path to delete
+const filePathToDelete = path.join(app.getPath('userData'), screenAudio_filename); // Define the file path to delete
 
 app.on('before-quit', () => 
 {
@@ -369,3 +388,12 @@ function sendToggleCommand(isMuted)
   }
 );
 }
+
+// Handle API key updates
+ipcMain.on('api-key-updated', (event, apiKey) => {
+    if (backendProcessor) {
+        backendProcessor.updateApiKey(apiKey);
+    } else {
+        initializeBackendProcessor();
+    }
+});

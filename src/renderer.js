@@ -1,4 +1,5 @@
 const { ipcRenderer } = require('electron');
+const store = require('./store');
 const { startRecording, stopRecording } = require('./screenCapture');
 const { startMicrophoneRecording, stopMicrophoneRecording } = require('./micCapture');
 
@@ -241,3 +242,38 @@ initVisualization();
 
 // Add click event listener to the canvas
 canvas.addEventListener('click', handleCanvasClick);
+
+// Handle saving API key
+document.getElementById('saveApiKey').addEventListener('click', () => {
+    const apiKey = document.getElementById('apiKeyInput').value.trim();
+    if (apiKey) {
+        store.set('groqApiKey', apiKey);
+        ipcRenderer.send('api-key-updated', apiKey);
+        
+        // Show success message
+        const button = document.getElementById('saveApiKey');
+        button.textContent = 'Saved!';
+        setTimeout(() => {
+            button.textContent = 'Save';
+        }, 1000);
+    }
+});
+
+async function requestMicrophoneAccess() {
+  try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      console.log('Microphone access granted');
+      stream.getTracks().forEach(track => track.stop()); // Stop the test stream
+  } catch (error) {
+      console.error('Error accessing microphone:', error);
+  }
+}
+// Load saved API key when app starts
+window.addEventListener('DOMContentLoaded', async () => {
+    await requestMicrophoneAccess();
+
+    const savedApiKey = store.get('groqApiKey');
+    if (savedApiKey) {
+        document.getElementById('apiKeyInput').value = savedApiKey;
+    }
+});
