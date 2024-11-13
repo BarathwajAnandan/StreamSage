@@ -1,3 +1,0 @@
-pydub
-flask
-pygame
